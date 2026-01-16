@@ -1,0 +1,4 @@
+/csv_contaminacion
+*.csv
+__pycache__/*
+.vscode/shortcuts.json
