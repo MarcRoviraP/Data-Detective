@@ -40,14 +40,23 @@ def main(page: ft.Page):
     from utils.data_verifier import verify_and_generate_data
 
     # Mostrar splash screen mientras se verifica
+    splash_progress_text = ft.Text(
+        "Verificando...", size=14, color=ft.Colors.BLUE_400)
     splash = ft.Container(
         content=ft.Column([
-            ft.ProgressRing(),
+            ft.Text("Verificando datos históricos...",
+                    size=20, weight=ft.FontWeight.BOLD),
             ft.Container(height=20),
-            ft.Text("Verificando datos históricos...", size=16)
+            ft.ProgressBar(width=400, color=ft.Colors.BLUE_400),
+            ft.Container(height=10),
+            splash_progress_text,
+            ft.Container(height=5),
+            ft.Text("Esto puede tardar unos minutos en la primera ejecución",
+                    size=12, color=ft.Colors.GREY_400)
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-        alignment=ft.alignment.Alignment.CENTER,
-        expand=True
+        alignment=ft.alignment.Alignment(0, 0),
+        expand=True,
+        bgcolor="#0a0e1a"
     )
     page.add(splash)
     page.update()

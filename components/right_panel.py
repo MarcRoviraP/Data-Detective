@@ -50,6 +50,7 @@ class RightPanel(ft.Container):
             content=ft.Column(
 
                 controls=[
+                    ft.Text("DATOS HISTORICOS"),
                     # Botones de capa
                     ft.Row(
                         ref=self.btnRef,

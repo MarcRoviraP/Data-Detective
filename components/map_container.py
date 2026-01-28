@@ -2,6 +2,7 @@
 Contenedor del mapa central con selector de capas.
 """
 
+from flet import MouseCursor
 import flet as ft
 import flet_map as mapa
 from config.map_styles import MAP_STYLES
@@ -338,6 +339,7 @@ class MapContainer(ft.Container):
         return mapa.Marker(
             content=ft.GestureDetector(
                 on_tap=on_icon_click,
+                mouse_cursor=MouseCursor.CLICK,
                 content=ft.Container(
                     width=35,
                     height=35,
