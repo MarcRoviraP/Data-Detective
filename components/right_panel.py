@@ -7,8 +7,8 @@ import flet as ft
 from config.theme import COLORS
 from .ui_elements import UIElements
 import os
-import csv
-from datetime import datetime
+import json
+import datetime
 
 import flet_map as mapa
 from config.map_styles import MAP_STYLES
@@ -196,112 +196,81 @@ class RightPanel(ft.Container):
         )
 
     def load_historical_pollution_data(self):
-        """Carga los datos históricos de contaminación desde el CSV y los indexa."""
-        csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                                "valencia_pollution_consolidated.csv")
+        """Carga metadata de datos históricos (JSON fragmentado por año)."""
+        # Inicializar siempre, incluso si falla la carga
+        self.metadata = {}
+        self.year_cache = {}
+        self.json_base_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                           "data", "pollution_historical")
 
-        if not os.path.exists(csv_path):
-            print(f"❌ Archivo CSV no encontrado: {csv_path}")
+        metadata_path = os.path.join(self.json_base_path, "metadata.json")
+
+        if not os.path.exists(metadata_path):
+            print(f"❌ Archivo metadata no encontrado: {metadata_path}")
+            print(
+                "   ℹ️  Ejecuta utils/generate_json_indexed.py para generar los archivos JSON")
             return
 
-        print(f"📂 Cargando y procesando datos históricos...")
+        print(f"📂 Cargando metadata de datos históricos...")
 
         try:
-            # Diccionario indexado por (año, mes) -> {cod_estacion: datos}
-            self.indexed_data = {}
-            record_count = 0
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                self.metadata = json.load(f)
 
-            with open(csv_path, 'r', encoding='utf-8') as file:
-                reader = csv.DictReader(file, delimiter=';')
+            print(f"✅ Metadata cargada: {
+                  len(self.metadata['years'])} años disponibles")
+            print(f"   📅 Rango: {
+                  min(self.metadata['years'])}-{max(self.metadata['years'])}")
 
-                for row in reader:
-                    record_count += 1
-                    try:
-                        # Parsear fecha una sola vez durante la carga
-                        fecha_str = row.get('FECHA', '')
-                        if not fecha_str:
-                            continue
-
-                        # Extraer año y mes directamente de la cadena YYYY-MM-DD
-                        parts = fecha_str.split('-')
-                        if len(parts) < 2:
-                            continue
-
-                        year = int(parts[0])
-                        month = int(parts[1])
-                        key = (year, month)
-
-                        # Crear entrada para este mes/año si no existe
-                        if key not in self.indexed_data:
-                            self.indexed_data[key] = {}
-
-                        cod_estacion = row.get('COD_ESTACION', '')
-                        if not cod_estacion:
-                            continue
-
-                        # Inicializar sensor si no existe
-                        if cod_estacion not in self.indexed_data[key]:
-                            self.indexed_data[key][cod_estacion] = {
-                                'nombre': row.get('NOM_ESTACION', ''),
-                                'lat': row.get('LATITUD', ''),
-                                'lon': row.get('LONGITUD', ''),
-                                'no2_values': [],
-                                'o3_values': [],
-                                'pm10_values': []
-                            }
-
-                        # Agregar valores
-                        sensor = self.indexed_data[key][cod_estacion]
-
-                        no2 = row.get('NO2', '-')
-                        if no2 and no2 != '-':
-                            try:
-                                sensor['no2_values'].append(float(no2))
-                            except ValueError:
-                                pass
-
-                        o3 = row.get('O3', '-')
-                        if o3 and o3 != '-':
-                            try:
-                                sensor['o3_values'].append(float(o3))
-                            except ValueError:
-                                pass
-
-                        pm10 = row.get('PM10', '-')
-                        if pm10 and pm10 != '-':
-                            try:
-                                sensor['pm10_values'].append(float(pm10))
-                            except ValueError:
-                                pass
-
-                    except Exception as e:
-                        continue
-
-            print(f"✅ Procesados {record_count} registros en {
-                  len(self.indexed_data)} períodos distintos")
         except Exception as e:
-            print(f"❌ Error al cargar CSV: {e}")
-            self.indexed_data = {}
+            print(f"❌ Error al cargar metadata: {e}")
+
+    def load_year_data(self, year):
+        """Carga datos de un año específico bajo demanda."""
+        year = int(year)
+
+        if year not in self.year_cache:
+            json_path = os.path.join(self.json_base_path, f"{year}.json")
+
+            if not os.path.exists(json_path):
+                print(f"⚠️ Archivo no encontrado: {json_path}")
+                return None
+
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    self.year_cache[year] = json.load(f)
+                print(f"📖 Año {year} cargado en caché")
+            except Exception as e:
+                print(f"❌ Error al cargar {year}.json: {e}")
+                return None
+
+        return self.year_cache[year]
 
     def filter_sensors_by_date(self, month, year):
-        """Filtra sensores únicos por mes y año usando datos indexados."""
-        if not hasattr(self, 'indexed_data') or not month or not year:
+        """Filtra sensores únicos por mes y año usando datos JSON indexados."""
+        if not month or not year:
             return []
 
         try:
-            month_int = int(month)
+            month_str = str(int(month))
             year_int = int(year)
-            key = (year_int, month_int)
 
-            # Búsqueda O(1) en el diccionario indexado
-            if key not in self.indexed_data:
+            # Cargar datos del año (bajo demanda, con caché)
+            year_data = self.load_year_data(year_int)
+
+            if not year_data:
+                print(f"⚠️ No hay datos para el año {year}")
+                return []
+
+            # Buscar mes en los datos del año
+            if month_str not in year_data['months']:
                 print(f"⚠️ No hay datos para {month}/{year}")
                 return []
 
-            sensors_data = self.indexed_data[key]
+            sensors_data = year_data['months'][month_str]
             filtered_sensors = []
 
-            # Calcular promedios solo para los sensores de este período
+            # Calcular promedios para cada sensor
             for cod_estacion, sensor in sensors_data.items():
                 sensor_info = {
                     'cod': cod_estacion,

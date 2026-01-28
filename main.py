@@ -1,4 +1,5 @@
 import flet as ft
+import os
 from components import LeftPanel, MapContainer, RightPanel
 
 
@@ -35,12 +36,58 @@ def main(page: ft.Page):
     page.window.maximized = True
     page.bgcolor = "#0a0e1a"
 
-    # Agregar la UI principal
-    ui = DataDetectiveUI(page)
-    page.add(ui)
+    # Verificar y generar datos si es necesario
+    from utils.data_verifier import verify_and_generate_data
 
-    # Configurar event handlers después de que la página esté lista
-    ui.right_panel.setup_event_handlers()
+    # Mostrar splash screen mientras se verifica
+    splash = ft.Container(
+        content=ft.Column([
+            ft.ProgressRing(),
+            ft.Container(height=20),
+            ft.Text("Verificando datos históricos...", size=16)
+        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+        alignment=ft.alignment.Alignment.CENTER,
+        expand=True
+    )
+    page.add(splash)
+    page.update()
+
+    # Verificar datos (puede mostrar diálogo de generación)
+    data_ready = verify_and_generate_data(page)
+
+    # Si los datos están listos, cargar la UI
+    if data_ready:
+        page.clean()  # Limpiar splash screen
+
+        # Agregar la UI principal
+        ui = DataDetectiveUI(page)
+        page.add(ui)
+
+        # Configurar event handlers después de que la página esté lista
+        ui.right_panel.setup_event_handlers()
+    else:
+        # Si no están listos, el diálogo de generación se encargará
+        # Cuando termine, se llamará a esta función de nuevo
+        import time
+        import threading
+
+        def wait_and_load():
+            # Esperar a que termine la generación
+            time.sleep(3)
+            # Verificar si ya terminó
+            data_dir = os.path.join(os.path.dirname(
+                __file__), "data", "pollution_historical")
+            metadata_path = os.path.join(data_dir, "metadata.json")
+
+            if os.path.exists(metadata_path):
+                page.clean()
+                ui = DataDetectiveUI(page)
+                page.add(ui)
+                ui.right_panel.setup_event_handlers()
+                page.update()
+
+        thread = threading.Thread(target=wait_and_load, daemon=True)
+        thread.start()
 
 
 if __name__ == "__main__":
