@@ -70,6 +70,18 @@ def download_all_data():
     while current_year < END_YEAR or (current_year == END_YEAR and current_month <= END_MONTH):
         month_count += 1
         print(f"\n[{month_count}/{total_months}] Descargando {current_year}-{current_month:02d}...", end=" ")
+        # Comprobar si el fichero ya existe para saltar la descarga
+        expected_filename = f"contaminacion_{current_year}_{current_month:02d}.csv"
+        if os.path.exists("csv_contaminacion/" + expected_filename):
+            print(f"✅ Ya existe")
+            downloaded_files.append("csv_contaminacion/" + expected_filename)
+            
+            # Avanzar al siguiente mes
+            current_month += 1
+            if current_month > 12:
+                current_month = 1
+                current_year += 1
+            continue
         
         try:
             filepath = get_historical_data(current_year, current_month)
@@ -108,6 +120,34 @@ def download_all_data():
     return downloaded_files
 
 
+# Coordenadas aproximadas de estaciones de Valencia
+STATION_COORDINATES = {
+    'PISTA': {'lat': 39.4589, 'lon': -0.3768},      # Pista de Silla
+    'MOLÍ': {'lat': 39.4891, 'lon': -0.3800},       # Molí del Sol
+    'POLITÈCNIC': {'lat': 39.4811, 'lon': -0.3400}, # UPV
+    'VIVERS': {'lat': 39.4795, 'lon': -0.3667},     # Vivers
+    'FRANÇA': {'lat': 39.4600, 'lon': -0.3500},     # Avd. Francia
+    'BULEVARD': {'lat': 39.4470, 'lon': -0.3600},   # Bulevard Sud
+    'CENTRO': {'lat': 39.4702, 'lon': -0.3769},     # Centro
+    'OLIVERETA': {'lat': 39.4700, 'lon': -0.4000},  # Olivereta
+    'PATRAIX': {'lat': 39.4600, 'lon': -0.3900},    # Patraix
+    'CABANYAL': {'lat': 39.4700, 'lon': -0.3300},   # Cabanyal
+    'LLUCH': {'lat': 39.4700, 'lon': -0.3300},      # Dr. Lluch
+    'VLC': {'lat': 39.4700, 'lon': -0.3700},        # Genérico Valencia
+    'VALENCIA': {'lat': 39.4700, 'lon': -0.3700},   # Genérico Valencia
+}
+
+def get_station_coords(station_name):
+    """Obtiene coordenadas para una estación."""
+    name_upper = station_name.upper()
+    
+    # Búsqueda por palabra clave prioritaria
+    for key, coords in STATION_COORDINATES.items():
+        if key in name_upper:
+            return coords
+    
+    return {'lat': '', 'lon': ''}
+
 def consolidate_data(csv_files):
     """Consolida todos los CSVs en uno solo con filtros aplicados."""
     print("\n" + "=" * 60)
@@ -119,7 +159,7 @@ def consolidate_data(csv_files):
     total_rows_kept = 0
     
     # Encabezados del CSV consolidado
-    headers = ['COD_ESTACION', 'NOM_ESTACION', 'FECHA', 'NO2', 'O3', 'PM10']
+    headers = ['COD_ESTACION', 'NOM_ESTACION', 'FECHA', 'NO2', 'O3', 'PM10', 'LATITUD', 'LONGITUD']
     
     for i, filepath in enumerate(csv_files, 1):
         print(f"[{i}/{len(csv_files)}] Procesando {os.path.basename(filepath)}...", end=" ")
@@ -148,6 +188,9 @@ def consolidate_data(csv_files):
                     if not has_data:
                         continue
                     
+                    # Obtener coordenadas
+                    coords = get_station_coords(station_name)
+                    
                     # Crear fila consolidada
                     consolidated_row = {
                         'COD_ESTACION': row.get('COD_ESTACION', '').strip(),
@@ -155,7 +198,9 @@ def consolidate_data(csv_files):
                         'FECHA': row.get('FECHA', '').strip(),
                         'NO2': row.get('NO2', '-').strip(),
                         'O3': row.get('O3', '-').strip(),
-                        'PM10': row.get('PM10', '-').strip()
+                        'PM10': row.get('PM10', '-').strip(),
+                        'LATITUD': coords['lat'],
+                        'LONGITUD': coords['lon']
                     }
                     
                     consolidated_rows.append(consolidated_row)

@@ -7,397 +7,531 @@ import flet as ft
 from config.theme import COLORS
 from .ui_elements import UIElements
 import os
+import csv
+from datetime import datetime
+
+import flet_map as mapa
+from config.map_styles import MAP_STYLES
+
 
 class RightPanel(ft.Container):
     """
     Panel lateral derecho con archivo histórico y datos consolidados.
     Maneja la visualización de estadísticas históricas y navegación por fechas.
     """
-    
-    def __init__(self, page: ft.Page = None):
-        # 1. Inicialización de estado
-        self._page_ref = page
-        self.current_year = 2024
-        self.current_month = 12
-        self.historical_stats = {}
-        self.completeness = 0
-        
-        # 2. Referencias a componentes UI (para actualizaciones parciales)
-        self.stats_column = ft.Column(spacing=10) # Contenedor de tarjetas
-        self.completeness_text = ft.Text(
-            value="---%", 
-            size=40, 
-            weight=ft.FontWeight.BOLD
-        )
-        
-        # 3. Configuración del Contenedor Principal
-        super().__init__(
-            width=400,
-            bgcolor=COLORS["bg_white"],
-            padding=30,
-            content=self._build_layout()
-        )
-        
-        # 4. Carga inicial de datos
-        self.load_historical_data()
 
-    def _build_layout(self):
-        """Construye la estructura principal del panel."""
-        return ft.Column(
-            spacing=20,
-            scroll=ft.ScrollMode.AUTO,
-            controls=[
-                self._build_header_section(),
-                self._build_timeline_decoration(),
-                self._build_title_section(),
-                self._build_controls_section(),
-                self._build_stats_section(),
-                self._build_snapshot_section(),
-                self._build_events_section(),
-                self._build_reliability_section(),
-            ]
-        )
+    def __init__(self, page: ft.Page):
+        print("🔧 Inicializando RightPanel...")
+        super().__init__()
+        self._page = page
+        self.current_layer = "pollution"  # Default layer
+        self.btnRef = ft.Ref[ft.Row]()
+        self.map_ref = ft.Ref[mapa.Map]()
+        self.marker_layer_ref = ft.Ref[mapa.MarkerLayer]()
 
-    # --- Secciones del UI ---
+        # Referencias para dropdowns
+        self.month_dropdown_ref = ft.Ref[ft.Dropdown]()
+        self.year_dropdown_ref = ft.Ref[ft.Dropdown]()
 
-    def _build_header_section(self):
-        """Crea el header con selectores de fecha."""
-        # Configuración de opciones
-        year_options = [ft.dropdown.Option(str(y)) for y in range(2025, 1993, -1)]
-        months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
-        month_options = [ft.dropdown.Option(key=str(i+1), text=m) for i, m in enumerate(months)]
+        # Rangos de fechas por capa
+        self.date_ranges = {
+            "pollution": {"year_start": 1994, "year_end": 2025, "month_start": 4, "month_end": 11},
+            "rain": {"year_start": 2000, "year_end": 2026, "month_start": 1, "month_end": 1},
+            "traffic": {"year_start": 2000, "year_end": 2026, "month_start": 1, "month_end": 1}
+        }
 
-        # Creación de Dropdowns
-        self.year_dropdown = ft.Dropdown(
-            width=100,
-            value=str(self.current_year),
-            options=year_options,
-            text_size=13,
-            height=40,
-            content_padding=10,
-            border_color=COLORS["border_light"],
-            dense=True,
-            bgcolor=COLORS["bg_light"],
-            border_radius=8,
-            label="Año",
-            label_style=ft.TextStyle(size=10, color=COLORS["text_gray"])
-        )
-        # Asignación de evento explícita (Fix para Flet)
-        self.year_dropdown.on_change = self._on_year_changed
-        self.year_dropdown.text_style = ft.TextStyle(color=COLORS["text_black"], weight=ft.FontWeight.BOLD)
+        # Datos históricos de contaminación (indexados por año-mes)
+        self.indexed_data = {}
+        self.pollution_markers = []
 
-        self.month_dropdown = ft.Dropdown(
-            width=100,
-            value=str(self.current_month),
-            options=month_options,
-            text_size=13,
-            height=40,
-            content_padding=10,
-            border_color=COLORS["border_light"],
-            dense=True,
-            bgcolor=COLORS["bg_light"],
-            border_radius=8,
-            label="Mes",
-            label_style=ft.TextStyle(size=10, color=COLORS["text_gray"])
-        )
-        # Asignación de evento explícita
-        self.month_dropdown.on_change = self._on_month_changed
-        self.month_dropdown.text_style = ft.TextStyle(color=COLORS["text_black"], weight=ft.FontWeight.BOLD)
+        self.content = ft.Container(
 
-        return ft.Column(
-            spacing=10,
-            controls=[
-                ft.Row(
-                    controls=[
-                        ft.Icon("access_time", size=16, color=COLORS["text_gray"]),
-                        ft.Text("NAVEGACIÓN HISTÓRICA", color=COLORS["text_gray"], size=10, weight=ft.FontWeight.BOLD),
-                    ]
-                ),
-                ft.Row(
-                    spacing=15,
-                    controls=[self.year_dropdown, self.month_dropdown]
-                )
-            ]
-        )
-
-    def _build_timeline_decoration(self):
-        """Pequeña decoración visual de línea de tiempo."""
-        return ft.Container(
-            height=40,
-            content=ft.Row(
-                alignment=ft.MainAxisAlignment.CENTER,
-                controls=[
-                    ft.Container(width=2, height=40, bgcolor=COLORS["border_light"]),
-                ]
-            )
-        )
-
-    def _build_title_section(self):
-        """Título principal."""
-        return ft.Column(
-            spacing=5,
-            controls=[
-                ft.Text("Archivo Histórico", size=28, weight=ft.FontWeight.BOLD, color=COLORS["text_black"]),
-                ft.Row(
-                    controls=[
-                        ft.Icon("verified", color=COLORS["primary"], size=16),
-                        ft.Text("Datos Consolidados Oficiales", color=COLORS["text_gray"], size=12),
-                    ]
-                ),
-            ]
-        )
-
-    def _build_controls_section(self):
-        """Tabs y filtros adicionales."""
-        return ft.Column(
-            spacing=15,
-            controls=[
-                # Selector Metrópolis (Visual)
-                ft.Container(
-                    bgcolor=COLORS["bg_light"],
-                    border_radius=10,
-                    padding=10,
-                    content=ft.Row(
-                        controls=[
-                            ft.Icon("location_city", size=16, color=COLORS["text_dark_gray"]),
-                            ft.Text("València Ciudad", size=12, weight=ft.FontWeight.BOLD),
-                            ft.Container(expand=True),
-                            ft.Icon("arrow_drop_down", size=16),
-                        ]
-                    )
-                ),
-                # Tabs
-                ft.Row(
-                    scroll=ft.ScrollMode.HIDDEN,
-                    spacing=10,
-                    controls=[
-                        UIElements.create_tab("Calidad Aire", True),
-                        UIElements.create_tab("Clima", False),
-                        UIElements.create_tab("Movilidad", False),
-                    ]
-                )
-            ]
-        )
-
-    def _build_stats_section(self):
-        """Sección dinámica de estadísticas."""
-        return ft.Container(
-            content=ft.Column(
-                spacing=15,
-                controls=[
-                    ft.Text("ESTADÍSTICAS MENSUALES", size=11, weight=ft.FontWeight.BOLD, color=COLORS["text_gray"]),
-                    self.stats_column # Aquí se inyectarán las tarjetas
-                ]
-            )
-        )
-
-    def _build_snapshot_section(self):
-        """Placeholder para futuro gráfico/snapshot."""
-        return ft.Container(
-            height=120,
-            bgcolor="#e0f7fa", # Color suave cian
-            border_radius=15,
-            padding=20,
-            content=ft.Column(
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                controls=[
-                    ft.Icon("insert_chart_outlined", color="#006064", size=30),
-                    ft.Text("Tendencia Mensual", color="#006064", size=12, weight=ft.FontWeight.BOLD)
-                ]
-            )
-        )
-
-    def _build_events_section(self):
-        """Eventos destacados."""
-        return ft.Column(
-            spacing=10,
-            controls=[
-                ft.Text("IMPACTO DE EVENTOS", size=11, weight=ft.FontWeight.BOLD, color=COLORS["text_gray"]),
-                ft.Row(
-                    scroll=ft.ScrollMode.HIDDEN,
-                    controls=[
-                        self._create_mini_event_card("Fallas", "Alta", COLORS["event_danger"]),
-                        self._create_mini_event_card("Tráfico", "Medio", COLORS["traffic"]),
-                    ]
-                )
-            ]
-        )
-
-    def _create_mini_event_card(self, title, impact, color):
-        return ft.Container(
-            bgcolor=COLORS["bg_light"],
             padding=10,
-            border_radius=8,
-            content=ft.Row(
-                controls=[
-                    ft.Container(width=8, height=8, bgcolor=color, border_radius=4),
-                    ft.Text(title, size=11, weight=ft.FontWeight.BOLD),
-                    ft.Text(impact, size=10, color=COLORS["text_gray"]),
-                ]
-            )
-        )
-
-    def _build_reliability_section(self):
-        """Índice de completitud de datos."""
-        return ft.Container(
-            bgcolor=COLORS["bg_light"],
-            border_radius=15,
-            padding=20,
             content=ft.Column(
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+
                 controls=[
-                    ft.Text("CALIDAD DEL DATO", size=10, color=COLORS["text_gray"], weight=ft.FontWeight.BOLD),
-                    self.completeness_text,
-                    ft.Text("Registros válidos procesados", size=10, color=COLORS["text_gray"]),
-                ]
-            )
-        )
-
-    # --- Lógica de Negocio y Eventos ---
-
-    def _on_year_changed(self, e):
-        """Maneja el cambio de año."""
-        if not e.control.value: return
-        print(f"📅 Año cambiado a: {e.control.value}")
-        self.current_year = int(e.control.value)
-        self.load_historical_data()
-
-    def _on_month_changed(self, e):
-        """Maneja el cambio de mes."""
-        if not e.control.value: return
-        print(f"📅 Mes cambiado a: {e.control.value}")
-        self.current_month = int(e.control.value)
-        self.load_historical_data()
-
-    def load_historical_data(self):
-        """Orquesta la carga de datos."""
-        try:
-            from utils.historical_data_processor import HistoricalDataProcessor
-            
-            print(f"🔄 Cargando datos para: {self.current_year}-{self.current_month:02d}")
-            
-            # 1. Intentar cargar consolidado
-            path = "valencia_pollution_consolidated.csv"
-            used_sample = False
-            
-            if os.path.exists(path):
-                processor = HistoricalDataProcessor(path)
-                # Cargar solo el slice necesario
-                has_data = processor.load_data(year=self.current_year, month=self.current_month)
-                
-                if has_data:
-                    self.historical_stats = processor.calculate_statistics()
-                    self.completeness = processor.get_data_completeness()
-                else:
-                    print("⚠️ No hay datos para esta fecha en el histórico.")
-                    used_sample = True
-            else:
-                print("⚠️ Archivo consolidado no encontrado.")
-                used_sample = True
-            
-            if used_sample:
-                self._load_sample_data()
-            
-            if not self.historical_stats and not used_sample:
-                 print("⚠️ Datos cargados pero vacíos.")
-                 self._load_sample_data()
-
-            # 2. Actualizar UI
-            self._update_view()
-
-        except Exception as e:
-            print(f"❌ Error crítico cargando datos: {e}")
-            import traceback
-            traceback.print_exc()
-            self._load_sample_data()
-            self._update_view()
-
-    def _load_sample_data(self):
-        """Carga datos ficticios si falla lo real."""
-        print("⚠️ Usando datos de ejemplo/fallback.")
-        self.historical_stats = {
-            'NO2': {'avg': 0.0, 'max': 0.0, 'min': 0.0, 'count': 0},
-            'O3': {'avg': 0.0, 'max': 0.0, 'min': 0.0, 'count': 0},
-            'PM10': {'avg': 0.0, 'max': 0.0, 'min': 0.0, 'count': 0},
-        }
-        self.completeness = 0.0
-
-    def _update_view(self):
-        """Actualiza los componentes visuales con el estado actual."""
-        try:
-            # 1. Actualizar texto de completitud
-            self.completeness_text.value = f"{self.completeness:.1f}%"
-            
-            # 2. Regenerar tarjetas de estadísticas
-            self.stats_column.controls = self._generate_stat_cards()
-            
-            # 3. Forzar repintado de la página
-            if self._page_ref:
-                self._page_ref.update()
-                print("✅ Vista actualizada correctamente.")
-            
-        except Exception as e:
-            print(f"❌ Error actualizando vista: {e}")
-
-    def _generate_stat_cards(self):
-        """Genera la lista de controles para las tarjetas."""
-        cards = []
-        pollutants = ['NO2', 'O3', 'PM10']
-        
-        # Colores
-        colors = {
-            'NO2': COLORS["no2"],
-            'O3': COLORS["pollution"], 
-            'PM10': COLORS["event_danger"]
-        }
-
-        has_data = False
-        for p in pollutants:
-            if p in self.historical_stats:
-                data = self.historical_stats[p]
-                if data['count'] > 0:
-                    has_data = True
-                    cards.append(self._create_single_stat_card(p, data, colors.get(p, COLORS["primary"])))
-
-        if not has_data:
-            return [
-                ft.Container(
-                    padding=20, 
-                    content=ft.Text("Sin datos registrados para este periodo", italic=True, color=COLORS["text_gray"])
-                )
-            ]
-        
-        return cards
-
-    def _create_single_stat_card(self, name, data, color):
-        """Crea una tarjeta individual."""
-        return ft.Container(
-            bgcolor=COLORS["bg_light"],
-            border_radius=10,
-            padding=15,
-            content=ft.Row(
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                controls=[
-                    # Izquierda: Nombre y Promedio
-                    ft.Column(
-                        spacing=2,
+                    # Botones de capa
+                    ft.Row(
+                        ref=self.btnRef,
                         controls=[
-                            ft.Text(name, size=12, weight=ft.FontWeight.BOLD, color=color),
-                            ft.Text(f"{data['avg']:.1f} µg/m³", size=20, weight=ft.FontWeight.BOLD),
-                        ]
+                            ft.ElevatedButton(
+                                "Contaminación",
+                                icon="sensors",
+                                on_click=lambda _: self.update_map_layer(
+                                    "pollution"),
+                                bgcolor=ft.Colors.GREEN if self.current_layer == "pollution" else ft.Colors.AMBER,
+                                color=ft.Colors.WHITE if self.current_layer == "pollution" else ft.Colors.BLACK,
+                                expand=True
+
+                            ),
+                            ft.ElevatedButton(
+                                "Precipitaciones",
+                                icon="grain",
+                                on_click=lambda _: self.update_map_layer(
+                                    "rain"),
+                                bgcolor=ft.Colors.BLUE if self.current_layer == "rain" else ft.Colors.AMBER,
+                                color=ft.Colors.WHITE if self.current_layer == "rain" else ft.Colors.BLACK,
+                                expand=True
+                            ),
+                            ft.ElevatedButton(
+                                "Tráfico",
+                                icon="traffic",
+                                on_click=lambda _: self.update_map_layer(
+                                    "traffic"),
+                                bgcolor=ft.Colors.RED if self.current_layer == "traffic" else ft.Colors.AMBER,
+                                color=ft.Colors.WHITE if self.current_layer == "traffic" else ft.Colors.BLACK,
+                                expand=True
+                            ),
+                        ],
+                        spacing=5,
                     ),
-                    # Derecha: Min/Max
-                    ft.Column(
-                        spacing=0,
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        horizontal_alignment=ft.CrossAxisAlignment.END,
+
+                    # Título + Selectores + Botón de búsqueda
+                    ft.Row(
                         controls=[
-                            ft.Text(f"Max: {data['max']:.0f}", size=10, color=COLORS["text_dark_gray"]),
-                            ft.Text(f"Min: {data['min']:.0f}", size=10, color=COLORS["text_gray"]),
-                            ft.Text(f"Reg: {data['count']}", size=9, color=COLORS["text_light_gray"]),
-                        ]
+                            ft.Text("Período:", size=12,
+                                    weight=ft.FontWeight.BOLD),
+                            ft.Dropdown(
+                                ref=self.month_dropdown_ref,
+                                options=[ft.dropdown.Option(
+                                    str(i)) for i in range(1, 13)],
+                                width=120,
+                                dense=True,
+                                hint_text="Mes",
+                                value="11",  # Valor por defecto
+                            ),
+                            ft.Dropdown(
+                                ref=self.year_dropdown_ref,
+                                options=[ft.dropdown.Option(str(i))
+                                         for i in range(1994, 2027)],
+                                width=120,
+                                dense=True,
+                                hint_text="Año",
+                                value="2025",  # Valor por defecto
+                            ),
+                            ft.IconButton(
+                                icon=ft.icons.Icons.SEARCH,
+                                tooltip="Buscar datos históricos",
+                                bgcolor=ft.Colors.BLUE_700,
+                                icon_color=ft.Colors.WHITE,
+                                on_click=lambda e: self.on_search_click(e),
+                                width=40,
+                                height=40,
+                            ),
+                        ],
+                        spacing=5,
+                        alignment=ft.MainAxisAlignment.START,
+                    ),
+
+                    # Título del mapa
+                    ft.Text("Ubicación de Sensores", size=14,
+                            weight=ft.FontWeight.BOLD),
+
+                    # Mapa
+                    ft.Container(
+                        content=self._create_mini_map(),
+                        expand=True,
                     )
-                ]
-            )
+                ],
+                spacing=8,
+                scroll=ft.ScrollMode.AUTO,
+                expand=True,
+            ))
+        # Cargar datos históricos
+        self.load_historical_pollution_data()
+
+        # Inicializar rangos de fecha para la capa por defecto (pollution)
+        self.update_date_ranges_for_layer(self.current_layer)
+        # Trigger initial update para mostrar los marcadores por defecto
+        if self.current_layer == "pollution":
+            self.update_pollution_markers()
+
+        print("✅ RightPanel inicializado correctamente")
+
+    def setup_event_handlers(self):
+        """Configurar event handlers después de que la página esté lista."""
+        print("🔧 setup_event_handlers llamado")
+        print(
+            "  ℹ️ Usando botón de búsqueda en su lugar (Flet no soporta on_change dinámico)")
+        # Nota: Flet Dropdown no soporta asignar on_change después de la creación
+        # Por eso usamos un botón de búsqueda explícito
+
+    def update_map_layer(self, layer: str):
+        """Actualiza la capa del mapa."""
+        self.current_layer = layer
+        self.btnRef.current.controls[0].bgcolor = ft.Colors.GREEN if self.current_layer == "pollution" else ft.Colors.AMBER
+        self.btnRef.current.controls[1].bgcolor = ft.Colors.BLUE if self.current_layer == "rain" else ft.Colors.AMBER
+        self.btnRef.current.controls[2].bgcolor = ft.Colors.RED if self.current_layer == "traffic" else ft.Colors.AMBER
+        self.btnRef.current.controls[0].color = ft.Colors.WHITE if self.current_layer == "pollution" else ft.Colors.BLACK
+        self.btnRef.current.controls[1].color = ft.Colors.WHITE if self.current_layer == "rain" else ft.Colors.BLACK
+        self.btnRef.current.controls[2].color = ft.Colors.WHITE if self.current_layer == "traffic" else ft.Colors.BLACK
+
+        # Actualizar rangos de fecha para esta capa
+        self.update_date_ranges_for_layer(layer)
+
+        # Actualizar marcadores según la capa
+        if self.current_layer == "pollution":
+            self.update_pollution_markers()
+
+        self._page.update()
+
+    def _create_mini_map(self):
+        """Crea un mapa simplificado para el panel derecho."""
+        return mapa.Map(
+            ref=self.map_ref,
+            width=400,
+            height=400,
+            # expand=True, # Removed to avoid layout conflict
+            initial_center=mapa.MapLatitudeLongitude(39.4699, -0.3763),
+            initial_zoom=12,
+            interaction_configuration=mapa.InteractionConfiguration(
+                flags=mapa.InteractionFlag.ALL
+            ),
+            layers=[
+                mapa.TileLayer(
+                    url_template=MAP_STYLES["Normal"],
+                ),
+                mapa.MarkerLayer(ref=self.marker_layer_ref, markers=[]),
+            ],
         )
+
+    def load_historical_pollution_data(self):
+        """Carga los datos históricos de contaminación desde el CSV y los indexa."""
+        csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                "valencia_pollution_consolidated.csv")
+
+        if not os.path.exists(csv_path):
+            print(f"❌ Archivo CSV no encontrado: {csv_path}")
+            return
+
+        print(f"📂 Cargando y procesando datos históricos...")
+
+        try:
+            # Diccionario indexado por (año, mes) -> {cod_estacion: datos}
+            self.indexed_data = {}
+            record_count = 0
+
+            with open(csv_path, 'r', encoding='utf-8') as file:
+                reader = csv.DictReader(file, delimiter=';')
+
+                for row in reader:
+                    record_count += 1
+                    try:
+                        # Parsear fecha una sola vez durante la carga
+                        fecha_str = row.get('FECHA', '')
+                        if not fecha_str:
+                            continue
+
+                        # Extraer año y mes directamente de la cadena YYYY-MM-DD
+                        parts = fecha_str.split('-')
+                        if len(parts) < 2:
+                            continue
+
+                        year = int(parts[0])
+                        month = int(parts[1])
+                        key = (year, month)
+
+                        # Crear entrada para este mes/año si no existe
+                        if key not in self.indexed_data:
+                            self.indexed_data[key] = {}
+
+                        cod_estacion = row.get('COD_ESTACION', '')
+                        if not cod_estacion:
+                            continue
+
+                        # Inicializar sensor si no existe
+                        if cod_estacion not in self.indexed_data[key]:
+                            self.indexed_data[key][cod_estacion] = {
+                                'nombre': row.get('NOM_ESTACION', ''),
+                                'lat': row.get('LATITUD', ''),
+                                'lon': row.get('LONGITUD', ''),
+                                'no2_values': [],
+                                'o3_values': [],
+                                'pm10_values': []
+                            }
+
+                        # Agregar valores
+                        sensor = self.indexed_data[key][cod_estacion]
+
+                        no2 = row.get('NO2', '-')
+                        if no2 and no2 != '-':
+                            try:
+                                sensor['no2_values'].append(float(no2))
+                            except ValueError:
+                                pass
+
+                        o3 = row.get('O3', '-')
+                        if o3 and o3 != '-':
+                            try:
+                                sensor['o3_values'].append(float(o3))
+                            except ValueError:
+                                pass
+
+                        pm10 = row.get('PM10', '-')
+                        if pm10 and pm10 != '-':
+                            try:
+                                sensor['pm10_values'].append(float(pm10))
+                            except ValueError:
+                                pass
+
+                    except Exception as e:
+                        continue
+
+            print(f"✅ Procesados {record_count} registros en {
+                  len(self.indexed_data)} períodos distintos")
+        except Exception as e:
+            print(f"❌ Error al cargar CSV: {e}")
+            self.indexed_data = {}
+
+    def filter_sensors_by_date(self, month, year):
+        """Filtra sensores únicos por mes y año usando datos indexados."""
+        if not hasattr(self, 'indexed_data') or not month or not year:
+            return []
+
+        try:
+            month_int = int(month)
+            year_int = int(year)
+            key = (year_int, month_int)
+
+            # Búsqueda O(1) en el diccionario indexado
+            if key not in self.indexed_data:
+                print(f"⚠️ No hay datos para {month}/{year}")
+                return []
+
+            sensors_data = self.indexed_data[key]
+            filtered_sensors = []
+
+            # Calcular promedios solo para los sensores de este período
+            for cod_estacion, sensor in sensors_data.items():
+                sensor_info = {
+                    'cod': cod_estacion,
+                    'nombre': sensor['nombre'],
+                    'lat': sensor['lat'],
+                    'lon': sensor['lon'],
+                    'no2_avg': sum(sensor['no2_values']) / len(sensor['no2_values']) if sensor['no2_values'] else None,
+                    'o3_avg': sum(sensor['o3_values']) / len(sensor['o3_values']) if sensor['o3_values'] else None,
+                    'pm10_avg': sum(sensor['pm10_values']) / len(sensor['pm10_values']) if sensor['pm10_values'] else None,
+                }
+                filtered_sensors.append(sensor_info)
+
+            print(f"🔍 Encontrados {len(filtered_sensors)
+                                   } sensores para {month}/{year}")
+            return filtered_sensors
+
+        except Exception as e:
+            print(f"❌ Error al filtrar sensores: {e}")
+            return []
+
+    def update_pollution_markers(self):
+        """Actualiza los marcadores de contaminación según la fecha seleccionada."""
+        print("\n🗺️ update_pollution_markers llamado")
+
+        # Obtener valores de los dropdowns
+        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
+        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+
+        print(f"  Mes seleccionado: {month}")
+        print(f"  Año seleccionado: {year}")
+
+        if not month or not year:
+            print("  ⚠️ No hay mes o año seleccionado")
+            return
+
+        # Filtrar sensores por fecha
+        sensors = self.filter_sensors_by_date(month, year)
+
+        # Limpiar marcadores anteriores
+        self.pollution_markers = []
+
+        # Crear nuevos marcadores
+        for sensor in sensors:
+            try:
+                lat = float(sensor['lat'])
+                lon = float(sensor['lon'])
+
+                # Determinar color según nivel de contaminación (usando NO2 como primario)
+                color = COLORS["primary"]
+                if sensor['no2_avg'] is not None:
+                    if sensor['no2_avg'] > 40:
+                        color = COLORS["event_danger"]
+                    elif sensor['no2_avg'] > 20:
+                        color = COLORS["traffic"]
+
+                # Crear datos del marcador con información detallada
+                marker_data = {
+                    "tipo": "contaminacion_historica",
+                    "titulo": sensor['nombre'],
+                    "icon": ft.icons.Icons.CLOUD,
+                    "color": color,
+                    "info": {
+                        "Estación": sensor['nombre'],
+                        "Código": sensor['cod'],
+                        "NO2 Promedio": f"{sensor['no2_avg']:.1f} μg/m³" if sensor['no2_avg'] else "N/A",
+                        "O3 Promedio": f"{sensor['o3_avg']:.1f} μg/m³" if sensor['o3_avg'] else "N/A",
+                        "PM10 Promedio": f"{sensor['pm10_avg']:.1f} μg/m³" if sensor['pm10_avg'] else "N/A",
+                        "Período": f"{month}/{year}"
+                    }
+                }
+
+                # Crear tooltip detallado
+                tooltip_text = (
+                    f"{sensor['nombre']}\n"
+                    f"NO2: {
+                        sensor['no2_avg']:.1f} μg/m³\n" if sensor['no2_avg'] else f"{sensor['nombre']}\nNO2: N/A\n"
+                )
+                if sensor['o3_avg']:
+                    tooltip_text += f"O3: {sensor['o3_avg']:.1f} μg/m³\n"
+                if sensor['pm10_avg']:
+                    tooltip_text += f"PM10: {sensor['pm10_avg']:.1f} μg/m³\n"
+                tooltip_text += f"Período: {month}/{year}"
+
+                # Crear marcador
+                marker = self._create_marker(
+                    lat, lon, color, ft.icons.Icons.CLOUD, marker_data, tooltip_text)
+                self.pollution_markers.append(marker)
+
+            except (ValueError, TypeError) as e:
+                print(f"⚠️ Error con coordenadas del sensor {
+                      sensor['cod']}: {e}")
+                continue
+
+        # Actualizar capa de marcadores
+        if self.marker_layer_ref.current:
+            self.marker_layer_ref.current.markers = self.pollution_markers
+            print(f"✅ {len(self.pollution_markers)
+                       } marcadores de contaminación agregados al mapa")
+            if self._page:
+                self._page.update()
+
+    def _create_marker(self, lat, lon, color, icon, marker_data=None, tooltip_text=None):
+        """Crea un marcador para el mini-mapa."""
+        # Color de fondo con transparencia
+        bg_color = color + "33"
+
+        # Usar tooltip personalizado o por defecto
+        if tooltip_text is None and marker_data:
+            tooltip_text = marker_data.get("titulo", "Sensor")
+
+        return mapa.Marker(
+            content=ft.Container(
+                width=30,
+                height=30,
+                bgcolor=bg_color,
+                border_radius=15,
+                alignment=ft.alignment.Alignment(0, 0),
+                content=ft.Icon(
+                    icon,
+                    color=color,
+                    size=18
+                ),
+                tooltip=tooltip_text,
+            ),
+            coordinates=mapa.MapLatitudeLongitude(lat, lon),
+        )
+
+    def on_search_click(self, e):
+        """Manejador del botón de búsqueda."""
+        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
+        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+        print(f"\n🔍 Búsqueda solicitada: mes={month}, año={
+              year}, capa={self.current_layer}")
+
+        # Actualizar según la capa activa
+        if self.current_layer == "pollution":
+            print("  → Actualizando marcadores de contaminación...")
+            self.update_pollution_markers()
+        else:
+            print(f"  ⚠️ Capa '{
+                  self.current_layer}' no soporta búsqueda histórica aún")
+
+    def on_year_change(self, e):
+        """Manejador cuando cambia el año - actualiza los meses disponibles."""
+        print(f"\n🔄 on_year_change llamado: año={
+              e.control.value if e and e.control else 'N/A'}")
+        # Actualizar rangos de mes según el año seleccionado
+        self.update_date_ranges_for_layer(self.current_layer)
+        # Luego actualizar los marcadores
+        self.on_date_change(e)
+
+    def on_date_change(self, e):
+        """Manejador de cambio de fecha en los dropdowns."""
+        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
+        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+        print(f"\n📅 on_date_change llamado: mes={
+              month}, año={year}, capa={self.current_layer}")
+
+        # Auto-actualizar según la capa activa
+        if self.current_layer == "pollution":
+            print("  → Actualizando marcadores de contaminación...")
+            self.update_pollution_markers()
+        else:
+            print(f"  ⚠️ Capa '{
+                  self.current_layer}' no soporta auto-actualización aún")
+        # Para las otras capas, podrías agregar lógica similar aquí
+
+    def update_date_ranges_for_layer(self, layer: str):
+        """Actualiza los rangos de fechas disponibles según la capa seleccionada."""
+        if layer not in self.date_ranges:
+            return
+
+        range_config = self.date_ranges[layer]
+
+        # Guardar valores actuales antes de actualizar opciones
+        current_month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
+        current_year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+
+        # Actualizar opciones de año
+        if self.year_dropdown_ref.current:
+            year_options = []
+            for year in range(range_config["year_start"], range_config["year_end"] + 1):
+                year_options.append(ft.dropdown.Option(str(year)))
+
+            self.year_dropdown_ref.current.options = year_options
+
+            # Mantener valor actual si está en rango, si no usar el último
+            if current_year and int(current_year) >= range_config["year_start"] and int(current_year) <= range_config["year_end"]:
+                self.year_dropdown_ref.current.value = current_year
+            else:
+                self.year_dropdown_ref.current.value = str(
+                    range_config["year_end"])
+
+        # Actualizar opciones de mes
+        if self.month_dropdown_ref.current:
+            # Usar el año seleccionado actual para determinar meses disponibles
+            selected_year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+
+            month_options = []
+            if selected_year == str(range_config["year_end"]):
+                # Si es el último año, solo mostrar meses hasta month_end
+                for month in range(1, range_config["month_end"] + 1):
+                    month_options.append(ft.dropdown.Option(str(month)))
+                # Mantener valor actual si está en rango
+                if current_month and int(current_month) <= range_config["month_end"]:
+                    self.month_dropdown_ref.current.value = current_month
+                else:
+                    self.month_dropdown_ref.current.value = str(
+                        range_config["month_end"])
+            elif selected_year == str(range_config["year_start"]):
+                # Si es el primer año, solo mostrar meses desde month_start
+                for month in range(range_config["month_start"], 13):
+                    month_options.append(ft.dropdown.Option(str(month)))
+                # Mantener valor actual si está en rango
+                if current_month and int(current_month) >= range_config["month_start"]:
+                    self.month_dropdown_ref.current.value = current_month
+                else:
+                    self.month_dropdown_ref.current.value = str(
+                        range_config["month_start"])
+            else:
+                # Año intermedio, mostrar todos los meses
+                for month in range(1, 13):
+                    month_options.append(ft.dropdown.Option(str(month)))
+                # Mantener valor actual
+                if current_month:
+                    self.month_dropdown_ref.current.value = current_month
+                else:
+                    self.month_dropdown_ref.current.value = "1"
+
+            self.month_dropdown_ref.current.options = month_options
+
+        if self._page:
+            self._page.update()
