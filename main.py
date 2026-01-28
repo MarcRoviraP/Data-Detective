@@ -5,13 +5,20 @@ from components import LeftPanel, MapContainer, RightPanel
 class DataDetectiveUI(ft.Row):
     """Interfaz principal de Data Detective."""
     
-    def __init__(self):
+    def __init__(self, page: ft.Page):
         super().__init__(spacing=0, expand=True)
         
-        # Crear los tres paneles principales
-        self.left_panel = LeftPanel()
-        self.map_container = MapContainer()
-        self.right_panel = RightPanel()
+        # Crear MapContainer primero
+        self.map_container = MapContainer(page=page)
+        
+        # Crear LeftPanel con callback al MapContainer
+        self.left_panel = LeftPanel(
+            page=page,
+            on_layer_change=self.map_container.on_layer_change
+        )
+        
+        # Crear RightPanel
+        self.right_panel = RightPanel(page=page)
         
         # Agregar los paneles a la fila
         self.controls = [
@@ -29,8 +36,9 @@ def main(page: ft.Page):
     page.bgcolor = "#0a0e1a"
     
     # Agregar la UI principal
-    page.add(DataDetectiveUI())
+    page.add(DataDetectiveUI(page))
 
 
 if __name__ == "__main__":
     ft.run(main)
+

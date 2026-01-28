@@ -10,12 +10,13 @@ class UIElements:
     """Clase con métodos estáticos para crear elementos UI reutilizables."""
     
     @staticmethod
-    def create_layer_item(text, icon, color, is_active):
+    def create_layer_item(text, icon, color, is_active, on_click=None):
         """Crea un item de capa de inteligencia."""
         return ft.Container(
             bgcolor=COLORS["panel_medium"] if is_active else "transparent",
             border_radius=10,
             padding=12,
+            on_click=on_click,
             content=ft.Row(
                 spacing=10,
                 controls=[
