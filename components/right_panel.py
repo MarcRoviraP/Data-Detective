@@ -36,19 +36,46 @@ class RightPanel(ft.Container):
         # Rangos de fechas por capa
         self.date_ranges = {
             "pollution": {"year_start": 1994, "year_end": 2025, "month_start": 4, "month_end": 11},
-            "rain": {"year_start": 2000, "year_end": 2026, "month_start": 1, "month_end": 1},
+            "rain": {"year_start": 2007, "year_end": 2024, "month_start": 1, "month_end": 12},
             "traffic": {"year_start": 2000, "year_end": 2026, "month_start": 1, "month_end": 1}
         }
 
-        # Datos históricos de contaminación (indexados por año-mes)
-        self.indexed_data = {}
-        self.pollution_markers = []
+        # Datos AEMET
+        self.aemet_data = {}
+        self.weather_markers = []
+        self.weather_stations_info = {}
+        self.selected_weather_station = "8414A"  # Default Valencia Aeropuerto
+
+        self.weather_info_text = ft.Text("", size=12, color=ft.Colors.BLUE_400)
+        self.weather_container = ft.Container(
+            content=ft.Column([
+                ft.Text("RESUMEN CLIMATOLÓGICO", size=14,
+                        weight=ft.FontWeight.BOLD),
+                self.weather_info_text
+            ]),
+            padding=10,
+            bgcolor="#161b22",
+            border_radius=10,
+            visible=False
+        )
+
+        self.pollution_info_text = ft.Text(
+            "", size=12, color=ft.Colors.GREEN_400)
+        self.pollution_container = ft.Container(
+            content=ft.Column([
+                ft.Text("DETALLE DE CALIDAD DEL AIRE", size=14,
+                        weight=ft.FontWeight.BOLD),
+                self.pollution_info_text
+            ]),
+            padding=10,
+            bgcolor="#161b22",
+            border_radius=10,
+            visible=False
+        )
 
         self.content = ft.Container(
-
             padding=10,
             content=ft.Column(
-
                 controls=[
                     ft.Text("DATOS HISTORICOS"),
                     # Botones de capa
@@ -63,7 +90,6 @@ class RightPanel(ft.Container):
                                 bgcolor=ft.Colors.GREEN if self.current_layer == "pollution" else ft.Colors.AMBER,
                                 color=ft.Colors.WHITE if self.current_layer == "pollution" else ft.Colors.BLACK,
                                 expand=True
-
                             ),
                             ft.ElevatedButton(
                                 "Precipitaciones",
@@ -99,16 +125,16 @@ class RightPanel(ft.Container):
                                 width=120,
                                 dense=True,
                                 hint_text="Mes",
-                                value="11",  # Valor por defecto
+                                value="11",
                             ),
                             ft.Dropdown(
                                 ref=self.year_dropdown_ref,
-                                options=[ft.dropdown.Option(str(i))
-                                         for i in range(1994, 2027)],
+                                options=[ft.dropdown.Option(
+                                    str(i)) for i in range(1994, 2027)],
                                 width=120,
                                 dense=True,
                                 hint_text="Año",
-                                value="2025",  # Valor por defecto
+                                value="2025",
                             ),
                             ft.IconButton(
                                 icon=ft.icons.Icons.SEARCH,
@@ -124,7 +150,10 @@ class RightPanel(ft.Container):
                         alignment=ft.MainAxisAlignment.START,
                     ),
 
-                    # Título del mapa
+                    # Resumen AEMET
+                    self.weather_container,
+                    self.pollution_container,
+                    # Mini mapa para mostrar la ubicación del sensor seleccionado
                     ft.Text("Ubicación de Sensores", size=14,
                             weight=ft.FontWeight.BOLD),
 
@@ -140,12 +169,14 @@ class RightPanel(ft.Container):
             ))
         # Cargar datos históricos
         self.load_historical_pollution_data()
+        self.load_aemet_historical_data()
 
         # Inicializar rangos de fecha para la capa por defecto (pollution)
         self.update_date_ranges_for_layer(self.current_layer)
         # Trigger initial update para mostrar los marcadores por defecto
         if self.current_layer == "pollution":
             self.update_pollution_markers()
+            self.update_weather_summary()
 
         print("✅ RightPanel inicializado correctamente")
 
@@ -170,10 +201,17 @@ class RightPanel(ft.Container):
         # Actualizar rangos de fecha para esta capa
         self.update_date_ranges_for_layer(layer)
 
+        # Resetear visibilidad de contenedores al cambiar capa
+        self.weather_container.visible = False
+        self.pollution_container.visible = False
+
         # Actualizar marcadores según la capa
         if self.current_layer == "pollution":
             self.update_pollution_markers()
+        elif self.current_layer == "rain":
+            self.update_weather_markers()
 
+        #self.update_weather_summary()
         self._page.update()
 
     def _create_mini_map(self):
@@ -343,21 +381,20 @@ class RightPanel(ft.Container):
                     }
                 }
 
-                # Crear tooltip detallado
-                tooltip_text = (
-                    f"{sensor['nombre']}\n"
-                    f"NO2: {
-                        sensor['no2_avg']:.1f} μg/m³\n" if sensor['no2_avg'] else f"{sensor['nombre']}\nNO2: N/A\n"
-                )
-                if sensor['o3_avg']:
-                    tooltip_text += f"O3: {sensor['o3_avg']:.1f} μg/m³\n"
-                if sensor['pm10_avg']:
-                    tooltip_text += f"PM10: {sensor['pm10_avg']:.1f} μg/m³\n"
-                tooltip_text += f"Período: {month}/{year}"
+                # Crear tooltip simplificado (solo nombre)
+                tooltip_text = sensor['nombre']
 
                 # Crear marcador
                 marker = self._create_marker(
-                    lat, lon, color, ft.icons.Icons.CLOUD, marker_data, tooltip_text)
+                    lat,
+                    lon,
+                    color,
+                    ft.icons.Icons.CLOUD,
+                    marker_data,
+                    tooltip_text,
+                    on_click=lambda e, s=sensor: self.on_pollution_sensor_click(
+                        s)
+                )
                 self.pollution_markers.append(marker)
 
             except (ValueError, TypeError) as e:
@@ -373,7 +410,7 @@ class RightPanel(ft.Container):
             if self._page:
                 self._page.update()
 
-    def _create_marker(self, lat, lon, color, icon, marker_data=None, tooltip_text=None):
+    def _create_marker(self, lat, lon, color, icon, marker_data=None, tooltip_text=None, on_click=None):
         """Crea un marcador para el mini-mapa."""
         # Color de fondo con transparencia
         bg_color = color + "33"
@@ -395,9 +432,228 @@ class RightPanel(ft.Container):
                     size=18
                 ),
                 tooltip=tooltip_text,
+                on_click=on_click
             ),
             coordinates=mapa.MapLatitudeLongitude(lat, lon),
         )
+
+    def _dms_to_decimal(self, dms_str):
+        """Convierte coordenadas de formato AEMET (DDMMSSX) a decimal."""
+        if not dms_str or len(dms_str) < 7:
+            return None
+
+        try:
+            direction = dms_str[-1]
+            seconds = float(dms_str[-3:-1])
+            minutes = float(dms_str[-5:-3])
+            degrees = float(dms_str[:-5])
+
+            decimal = degrees + (minutes / 60) + (seconds / 3600)
+
+            if direction in ['S', 'W']:
+                decimal = -decimal
+
+            return decimal
+        except Exception as e:
+            print(f"⚠️ Error convirtiendo DMS '{dms_str}': {e}")
+            return None
+
+    def load_aemet_historical_data(self):
+        """Carga los datos históricos de AEMET y la información de las estaciones."""
+        stations_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                     "utils", "valencia_stations.json")
+
+        # Bounding box para Valencia Ciudad (para filtrar estaciones lejanas)
+        VALENCIA_BBOX = {
+            "lat_min": 39.40,
+            "lat_max": 39.55,
+            "lon_min": -0.55,
+            "lon_max": -0.25
+        }
+
+        if os.path.exists(stations_path):
+            try:
+                with open(stations_path, 'r', encoding='utf-8') as f:
+                    stations = json.load(f)
+                    for s in stations:
+                        indicativo = s['indicativo']
+                        lat = self._dms_to_decimal(s['latitud'])
+                        lon = self._dms_to_decimal(s['longitud'])
+
+                        # Filtrar solo estaciones dentro de Valencia Ciudad
+                        if lat and lon:
+                            if (VALENCIA_BBOX["lat_min"] <= lat <= VALENCIA_BBOX["lat_max"] and
+                                    VALENCIA_BBOX["lon_min"] <= lon <= VALENCIA_BBOX["lon_max"]):
+                                self.weather_stations_info[indicativo] = {
+                                    'nombre': s['nombre'],
+                                    'lat': lat,
+                                    'lon': lon
+                                }
+                print(f"✅ Información de {len(
+                    self.weather_stations_info)} estaciones meteorológicas en Valencia Ciudad cargada")
+            except Exception as e:
+                print(f"❌ Error al cargar estaciones: {e}")
+
+        # Cargar datos de cada estación disponible
+        aemet_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                 "data", "aemet_historical")
+
+        if not os.path.exists(aemet_dir):
+            return
+
+        total_months = 0
+        for filename in os.listdir(aemet_dir):
+            if filename.startswith("monthly_") and filename.endswith(".json"):
+                parts = filename.split("_")
+                if len(parts) >= 2:
+                    indicativo = parts[1]
+                    try:
+                        filepath = os.path.join(aemet_dir, filename)
+                        with open(filepath, 'r', encoding='utf-8') as f:
+                            raw_data = json.load(f)
+                            if indicativo not in self.aemet_data:
+                                self.aemet_data[indicativo] = {}
+
+                            for item in raw_data:
+                                if 'fecha' in item:
+                                    self.aemet_data[indicativo][item['fecha']] = item
+                                    total_months += 1
+                    except Exception as e:
+                        print(f"❌ Error al cargar {filename}: {e}")
+
+        print(f"✅ Datos de AEMET cargados: {total_months} registros de {
+              len(self.aemet_data)} estaciones")
+
+    def update_weather_summary(self):
+        """Actualiza el resumen climatológico según la fecha y estación seleccionada."""
+        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
+        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+
+        if not month or not year or not self.selected_weather_station:
+            self.weather_container.visible = False
+            return
+
+        station_info = self.weather_stations_info.get(
+            self.selected_weather_station, {})
+        station_name = station_info.get('nombre', 'Desconocida')
+
+        # AEMET usa formato YYYY-MM (con cero inicial si es necesario)
+        month_int = int(month)
+        date_key_long = f"{year}-{month_int:02}"
+        date_key_short = f"{year}-{month_int}"
+
+        station_data = self.aemet_data.get(self.selected_weather_station, {})
+        weather = station_data.get(
+            date_key_long) or station_data.get(date_key_short)
+
+        if weather:
+            tm_mes = weather.get('tm_mes', 'N/A')
+            p_mes = weather.get('p_mes', 'N/A')
+            tm_max = weather.get('tm_max', 'N/A')
+            tm_min = weather.get('tm_min', 'N/A')
+
+            self.weather_container.content.controls[0].value = f"RESUMEN CLIMATOLÓGICO: {
+                station_name}"
+            self.weather_info_text.value = (
+                f"🌡️ Temp. Media: {tm_mes}°C\n"
+                f"📈 Temp. Máx: {tm_max}°C | 📉 Mín: {tm_min}°C\n"
+                f"🌧️ Precipitación: {p_mes} mm"
+            )
+            self.weather_container.visible = True
+        else:
+            self.weather_container.visible = False
+
+        if self._page:
+            self._page.update()
+
+    def update_weather_markers(self):
+        """Actualiza los marcadores de estaciones meteorológicas."""
+        print("\n🌧️ update_weather_markers llamado")
+
+        self.weather_markers = []
+
+        for indicativo, info in self.weather_stations_info.items():
+            if not info['lat'] or not info['lon']:
+                continue
+
+            color = ft.Colors.BLUE if indicativo == self.selected_weather_station else ft.Colors.BLUE_200
+
+            marker_data = {
+                "tipo": "clima_historico",
+                "indicativo": indicativo,
+                "titulo": info['nombre']
+            }
+
+            tooltip = f"Estación: {info['nombre']}"
+            if indicativo == self.selected_weather_station:
+                tooltip += " (Seleccionada)"
+
+            # Crear marcador interactivo
+            marker_content = ft.Container(
+                width=30,
+                height=30,
+                bgcolor=color + "33",
+                border_radius=15,
+                alignment=ft.alignment.Alignment(0, 0),
+                content=ft.Icon(
+                    ft.icons.Icons.GRAIN,
+                    color=color,
+                    size=18
+                ),
+                tooltip=tooltip,
+                on_click=lambda e, ind=indicativo: self.on_weather_station_click(
+                    ind)
+            )
+
+            marker = mapa.Marker(
+                content=marker_content,
+                coordinates=mapa.MapLatitudeLongitude(
+                    info['lat'], info['lon']),
+            )
+            self.weather_markers.append(marker)
+
+        if self.marker_layer_ref.current:
+            self.marker_layer_ref.current.markers = self.weather_markers
+            print(f"✅ {len(self.weather_markers)
+                       } marcadores meteorológicos agregados")
+            if self._page:
+                self._page.update()
+
+    def on_weather_station_click(self, indicativo):
+        """Manejador al hacer clic en una estación meteorológica."""
+        print(f"📍 Estación seleccionada: {indicativo}")
+        self.selected_weather_station = indicativo
+        self.update_weather_markers()
+        self.update_weather_summary()
+
+    def on_pollution_sensor_click(self, sensor):
+        """Manejador al hacer clic en un sensor de contaminación."""
+        print(f"📍 Sensor seleccionado: {sensor['nombre']}")
+
+        no2 = sensor.get('no2_avg')
+        o3 = sensor.get('o3_avg')
+        pm10 = sensor.get('pm10_avg')
+
+        info_text = (
+            f"📍 Estación: {sensor['nombre']}\n"
+            f"💨 NO2: {no2:.1f} μg/m³\n" if no2 else "💨 NO2: N/A\n"
+        )
+        if o3:
+            info_text += f"🌬️ O3: {o3:.1f} μg/m³\n"
+        if pm10:
+            info_text += f"🌑 PM10: {pm10:.1f} μg/m³\n"
+
+        self.pollution_info_text.value = info_text
+        self.pollution_container.visible = True
+
+        # Opcional: Centrar el mini-mapa en el sensor
+        if self.map_ref.current:
+            self.map_ref.current.center = mapa.MapLatitudeLongitude(
+                float(sensor['lat']), float(sensor['lon']))
+            self.map_ref.current.zoom = 13
+
+        if self._page:
+            self._page.update()
 
     def on_search_click(self, e):
         """Manejador del botón de búsqueda."""
@@ -406,10 +662,16 @@ class RightPanel(ft.Container):
         print(f"\n🔍 Búsqueda solicitada: mes={month}, año={
               year}, capa={self.current_layer}")
 
+        # Actualizar resumen climatológico independientemente de la capa
+        self.update_weather_summary()
+
         # Actualizar según la capa activa
         if self.current_layer == "pollution":
             print("  → Actualizando marcadores de contaminación...")
             self.update_pollution_markers()
+        elif self.current_layer == "rain":
+            print("  → Actualizando marcadores meteorológicos...")
+            self.update_weather_markers()
         else:
             print(f"  ⚠️ Capa '{
                   self.current_layer}' no soporta búsqueda histórica aún")

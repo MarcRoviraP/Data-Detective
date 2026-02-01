@@ -1,0 +1,191 @@
+[
+  {
+    "latitud": "384648N",
+    "provincia": "VALENCIA",
+    "altitud": "622",
+    "indicativo": "8005X",
+    "nombre": "FONTANARS DELS ALFORINS",
+    "indsinop": "",
+    "longitud": "004745W"
+  },
+  {
+    "latitud": "385544N",
+    "provincia": "VALENCIA",
+    "altitud": "5",
+    "indicativo": "8058X",
+    "nombre": "OLIVA",
+    "indsinop": "08282",
+    "longitud": "000545W"
+  },
+  {
+    "latitud": "385701N",
+    "provincia": "VALENCIA",
+    "altitud": "12",
+    "indicativo": "8058Y",
+    "nombre": "MIRAMAR",
+    "indsinop": "",
+    "longitud": "000816W"
+  },
+  {
+    "latitud": "390101N",
+    "provincia": "VALENCIA",
+    "altitud": "340",
+    "indicativo": "8072Y",
+    "nombre": "BARX",
+    "indsinop": "",
+    "longitud": "001817W"
+  },
+  {
+    "latitud": "391230N",
+    "provincia": "VALENCIA",
+    "altitud": "372",
+    "indicativo": "8193E",
+    "nombre": "JALANCE",
+    "indsinop": "",
+    "longitud": "010540W"
+  },
+  {
+    "latitud": "390458N",
+    "provincia": "VALENCIA",
+    "altitud": "855",
+    "indicativo": "8203O",
+    "nombre": "ZARRA",
+    "indsinop": "08283",
+    "longitud": "010603W"
+  },
+  {
+    "latitud": "390801N",
+    "provincia": "VALENCIA",
+    "altitud": "305",
+    "indicativo": "8270X",
+    "nombre": "BICORP",
+    "indsinop": "",
+    "longitud": "004724W"
+  },
+  {
+    "latitud": "384946N",
+    "provincia": "VALENCIA",
+    "altitud": "350",
+    "indicativo": "8283X",
+    "nombre": "ONTINYENT",
+    "indsinop": "",
+    "longitud": "003628W"
+  },
+  {
+    "latitud": "390006N",
+    "provincia": "VALENCIA",
+    "altitud": "88",
+    "indicativo": "8293X",
+    "nombre": "XÀTIVA",
+    "indsinop": "08290",
+    "longitud": "003123W"
+  },
+  {
+    "latitud": "390648N",
+    "provincia": "VALENCIA",
+    "altitud": "25",
+    "indicativo": "8300X",
+    "nombre": "CARCAIXENT",
+    "indsinop": "",
+    "longitud": "002645W"
+  },
+  {
+    "latitud": "393432N",
+    "provincia": "VALENCIA",
+    "altitud": "758",
+    "indicativo": "8309X",
+    "nombre": "UTIEL",
+    "indsinop": "08281",
+    "longitud": "011441W"
+  },
+  {
+    "latitud": "391105N",
+    "provincia": "VALENCIA",
+    "altitud": "12",
+    "indicativo": "8325X",
+    "nombre": "POLINYÀ DE XÚQUER",
+    "indsinop": "08287",
+    "longitud": "002219W"
+  },
+  {
+    "latitud": "392332N",
+    "provincia": "VALENCIA",
+    "altitud": "186",
+    "indicativo": "8337X",
+    "nombre": "TURÍS",
+    "indsinop": "",
+    "longitud": "003729W"
+  },
+  {
+    "latitud": "400338N",
+    "provincia": "VALENCIA",
+    "altitud": "705",
+    "indicativo": "8381X",
+    "nombre": "ADEMUZ",
+    "indsinop": "",
+    "longitud": "011701W"
+  },
+  {
+    "latitud": "394512N",
+    "provincia": "VALENCIA",
+    "altitud": "515",
+    "indicativo": "8395X",
+    "nombre": "CHELVA",
+    "indsinop": "",
+    "longitud": "005937W"
+  },
+  {
+    "latitud": "393950N",
+    "provincia": "VALENCIA",
+    "altitud": "198",
+    "indicativo": "8409X",
+    "nombre": "LLÍRIA",
+    "indsinop": "",
+    "longitud": "003914W"
+  },
+  {
+    "latitud": "392906N",
+    "provincia": "VALENCIA",
+    "altitud": "56",
+    "indicativo": "8414A",
+    "nombre": "VALENCIA AEROPUERTO",
+    "indsinop": "08284",
+    "longitud": "002829W"
+  },
+  {
+    "latitud": "392850N",
+    "provincia": "VALENCIA",
+    "altitud": "11",
+    "indicativo": "8416",
+    "nombre": "VALÈNCIA",
+    "indsinop": "08285",
+    "longitud": "002159W"
+  },
+  {
+    "latitud": "392846N",
+    "provincia": "VALENCIA",
+    "altitud": "6",
+    "indicativo": "8416X",
+    "nombre": "VALENCIA, UPV",
+    "indsinop": "",
+    "longitud": "002014W"
+  },
+  {
+    "latitud": "392850N",
+    "provincia": "VALENCIA",
+    "altitud": "11",
+    "indicativo": "8416Y",
+    "nombre": "VALÈNCIA, VIVEROS",
+    "indsinop": "08285",
+    "longitud": "002159W"
+  },
+  {
+    "latitud": "394203N",
+    "provincia": "VALENCIA",
+    "altitud": "24",
+    "indicativo": "8446Y",
+    "nombre": "SAGUNT/SAGUNTO",
+    "indsinop": "",
+    "longitud": "001532W"
+  }
+]
