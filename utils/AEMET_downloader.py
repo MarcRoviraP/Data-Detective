@@ -4,7 +4,7 @@ import time
 from AEMETDataService import AEMETDataService
 
 # API Key provided by the user
-API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0cmViYWxsc3JvdmlyZXRhQGdtYWlsLmNvbSIsImp0aSI6ImJiZjNlYTc4LTk5MTMtNDI0Yi1hOGM4LTJiYzczMzVhZTg1OSIsImlzcyI6IkFFTUVUIiwiaWF0IjoxNzY5Njg1ODIxLCJ1c2VySWQiOiJiYmYzZWE3OC05OTEzLTQyNGItYThjOC0yYmM3MzM1YWU4NTkiLCJyb2xlIjoiIn0.BQPzQtgpZfivV1QPcZ8Srp5cle9l01TJ_nRzzQJv4m4"
+ts = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0cmViYWxsc3JvdmlyZXRhQGdtYWlsLmNvbSIsImp0aSI6ImJiZjNlYTc4LTk5MTMtNDI0Yi1hOGM4LTJiYzczMzVhZTg1OSIsImlzcyI6IkFFTUVUIiwiaWF0IjoxNzY5Njg1ODIxLCJ1c2VySWQiOiJiYmYzZWE3OC05OTEzLTQyNGItYThjOC0yYmM3MzM1YWU4NTkiLCJyb2xlIjoiIn0.BQPzQtgpZfivV1QPcZ8Srp5cle9l01TJ_nRzzQJv4m4"
 
 # Configuration
 YEAR_START = "2007"
@@ -30,7 +30,7 @@ def main():
     with open(STATIONS_FILE, "r", encoding="utf-8") as f:
         stations = json.load(f)
 
-    service = AEMETDataService(API_KEY)
+    service = AEMETDataService(ts)
 
     # Filter only city stations to avoid rate limits and focus on user interest
     city_station_ids = ["8414A", "8416", "8416X", "8416Y"]
