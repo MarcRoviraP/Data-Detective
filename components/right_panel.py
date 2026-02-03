@@ -25,6 +25,14 @@ class RightPanel(ft.Container):
         print("🔧 Inicializando RightPanel...")
         super().__init__()
         self._page = page
+        self.width = 500
+        self.animate = ft.Animation(
+            duration=300, 
+            curve=ft.AnimationCurve.EASE_IN_OUT
+        )   
+        self.on_hover = self.animarTamanio
+    
+        
         self.current_layer = "pollution"  # Default layer
         self.btnRef = ft.Ref[ft.Row]()
         self.map_ref = ft.Ref[mapa.Map]()
@@ -52,6 +60,7 @@ class RightPanel(ft.Container):
 
         self.weather_info_text = ft.Text("", size=12, color=ft.Colors.BLUE_400)
         self.weather_container = ft.Container(
+            
             content=ft.Column([
                 ft.Text("RESUMEN CLIMATOLÓGICO", size=14,
                         weight=ft.FontWeight.BOLD),
@@ -60,7 +69,8 @@ class RightPanel(ft.Container):
             padding=10,
             bgcolor="#161b22",
             border_radius=10,
-            visible=False
+            visible=False,
+            
         )
 
         self.pollution_info_text = ft.Text(
@@ -166,6 +176,7 @@ class RightPanel(ft.Container):
                     ft.Container(
                         content=self._create_mini_map(),
                         expand=True,
+                        
                     ),
                 ],
                 spacing=8,
@@ -180,6 +191,12 @@ class RightPanel(ft.Container):
         self.start_async_data_loading()
 
         print("✅ RightPanel inicializado correctamente")
+    def animarTamanio(self, e):
+        if self.width == 500:
+            self.width = 800
+        else:
+            self.width = 500
+        self.update() 
 
     def setup_event_handlers(self):
         """Configurar event handlers después de que la página esté lista."""
@@ -219,7 +236,7 @@ class RightPanel(ft.Container):
         """Crea un mapa simplificado para el panel derecho."""
         return mapa.Map(
             ref=self.map_ref,
-            width=400,
+            
             height=400,
             # expand=True, # Removed to avoid layout conflict
             initial_center=mapa.MapLatitudeLongitude(39.4699, -0.3763),

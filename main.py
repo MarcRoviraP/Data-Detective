@@ -7,7 +7,7 @@ class DataDetectiveUI(ft.Row):
     """Interfaz principal de Data Detective."""
 
     def __init__(self, page: ft.Page):
-        super().__init__(spacing=0, expand=True)
+        super().__init__(spacing=0, expand=True,vertical_alignment=ft.CrossAxisAlignment.STRETCH)
 
         # Crear MapContainer primero
         self.map_container = MapContainer(page=page)
