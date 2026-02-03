@@ -46,10 +46,9 @@ class RightPanel(ft.Container):
         self.weather_markers = []
         self.weather_stations_info = {}
         self.selected_weather_station = "8414A"  # Default Valencia Aeropuerto
-        
+
         # Estado de carga
         self.data_loaded = False
-       
 
         self.weather_info_text = ft.Text("", size=12, color=ft.Colors.BLUE_400)
         self.weather_container = ft.Container(
@@ -173,10 +172,10 @@ class RightPanel(ft.Container):
                 scroll=ft.ScrollMode.AUTO,
                 expand=True,
             ))
-        
+
         # Inicializar rangos de fecha para la capa por defecto (pollution)
         self.update_date_ranges_for_layer(self.current_layer)
-        
+
         # Cargar datos históricos de forma asíncrona
         self.start_async_data_loading()
 
@@ -213,7 +212,7 @@ class RightPanel(ft.Container):
         elif self.current_layer == "rain":
             self.update_weather_markers()
 
-        #self.update_weather_summary()
+        # self.update_weather_summary()
         self._page.update()
 
     def _create_mini_map(self):
@@ -243,18 +242,18 @@ class RightPanel(ft.Container):
         self.year_cache = {}
         self.json_base_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                                            "data", "pollution_historical")
-        
+
         # Rutas para AEMET
         aemet_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                                  "data", "aemet_historical")
         stations_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                                      "utils", "valencia_stations.json")
-        
-        
+
         def on_complete(success: bool):
-            print(f"\n{'✅' if success else '⚠️'} Carga de datos completada (éxito={success})")
+            print(
+                f"\n{'✅' if success else '⚠️'} Carga de datos completada (éxito={success})")
             self.on_data_loaded()
-        
+
         # Crear instancia del loader
         self.data_loader = AsyncDataLoader()
         self.data_loader.load_all_async(
@@ -263,34 +262,35 @@ class RightPanel(ft.Container):
             stations_path,
             on_complete=on_complete
         )
-    
+
     def on_data_loaded(self):
         """Callback cuando los datos terminan de cargar."""
         # Obtener datos cargados
         pollution_data = self.data_loader.get_pollution_data()
         aemet_data = self.data_loader.get_aemet_data()
-        
+
         if pollution_data:
             self.metadata = pollution_data.get('metadata', {})
             self.year_cache = pollution_data.get('year_cache', {})
-        
+
         if aemet_data:
             self.aemet_data = aemet_data.get('aemet_data', {})
-            self.weather_stations_info = aemet_data.get('weather_stations_info', {})
-        
+            self.weather_stations_info = aemet_data.get(
+                'weather_stations_info', {})
+
         # Marcar como cargado
         self.data_loaded = True
-        
+
         # Actualizar UI con datos
         if self.current_layer == "pollution":
             self.update_pollution_markers()
             self.update_weather_summary()
-        
+
         if self._page:
             self._page.update()
-        
+
         print("✅ UI actualizada con datos cargados")
-        
+
     def load_historical_pollution_data(self):
         """Carga metadata de datos históricos (JSON fragmentado por año)."""
         # Este método ahora es llamado por el AsyncDataLoader
@@ -636,7 +636,7 @@ class RightPanel(ft.Container):
               year}, capa={self.current_layer}")
 
         # Actualizar resumen climatológico independientemente de la capa
-        #self.update_weather_summary()
+        # self.update_weather_summary()
 
         # Actualizar según la capa activa
         if self.current_layer == "pollution":
