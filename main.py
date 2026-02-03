@@ -34,7 +34,11 @@ def main(page: ft.Page):
     page.title = "Data Detective - VLC Urban Intel"
     page.padding = 0
     page.window.maximized = True
-    page.bgcolor = "#0a0e1a"
+    page.window.icon = "ico/ico.ico"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.theme = ft.Theme(
+        color_scheme_seed="blue"
+    )
 
     # Verificar y generar datos si es necesario
     from utils.data_verifier import verify_and_generate_data
@@ -64,8 +68,61 @@ def main(page: ft.Page):
     # Verificar datos (puede mostrar diálogo de generación)
     data_ready = verify_and_generate_data(page)
 
-    # Si los datos están listos, cargar la UI
+    # Si los datos están listos, pre-cargar datos de APIs en paralelo
     if data_ready:
+        import threading
+        import time
+        
+        # Actualizar mensaje del splash
+        splash_progress_text.value = "Cargando datos en tiempo real..."
+        page.update()
+        
+        # Variables para rastrear progreso
+        loading_status = {
+            "weather": False,
+            "air_quality": False,
+            "traffic": False
+        }
+        
+        # Pre-cargar datos de APIs en threads paralelos
+        def preload_weather():
+            from utils import get_cached_weather_data
+            get_cached_weather_data()
+            loading_status["weather"] = True
+            update_progress()
+        
+        def preload_air_quality():
+            from utils import get_cached_air_quality_data
+            get_cached_air_quality_data()
+            loading_status["air_quality"] = True
+            update_progress()
+        
+        def preload_traffic():
+            from utils import get_cached_traffic_data
+            get_cached_traffic_data()
+            loading_status["traffic"] = True
+            update_progress()
+        
+        def update_progress():
+            completed = sum(loading_status.values())
+            total = len(loading_status)
+            splash_progress_text.value = f"Cargando datos... ({completed}/{total})"
+            page.update()
+        
+        # Iniciar threads paralelos
+        weather_thread = threading.Thread(target=preload_weather, daemon=True)
+        air_quality_thread = threading.Thread(target=preload_air_quality, daemon=True)
+        traffic_thread = threading.Thread(target=preload_traffic, daemon=True)
+        
+        weather_thread.start()
+        air_quality_thread.start()
+        traffic_thread.start()
+        
+        # Esperar a que todos terminen (máximo 15 segundos)
+        start_time = time.time()
+        while not all(loading_status.values()) and (time.time() - start_time) < 15:
+            time.sleep(0.1)
+        
         page.clean()  # Limpiar splash screen
 
         # Agregar la UI principal
@@ -100,4 +157,4 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.run(main)
+    ft.run(main, assets_dir="assets")

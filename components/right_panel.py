@@ -12,6 +12,7 @@ import datetime
 
 import flet_map as mapa
 from config.map_styles import MAP_STYLES
+from utils.async_data_loader import AsyncDataLoader
 
 
 class RightPanel(ft.Container):
@@ -45,6 +46,10 @@ class RightPanel(ft.Container):
         self.weather_markers = []
         self.weather_stations_info = {}
         self.selected_weather_station = "8414A"  # Default Valencia Aeropuerto
+        
+        # Estado de carga
+        self.data_loaded = False
+       
 
         self.weather_info_text = ft.Text("", size=12, color=ft.Colors.BLUE_400)
         self.weather_container = ft.Container(
@@ -77,7 +82,8 @@ class RightPanel(ft.Container):
             padding=10,
             content=ft.Column(
                 controls=[
-                    ft.Text("DATOS HISTORICOS"),
+                    ft.Text("DATOS HISTORICOS", size=30,
+                            weight=ft.FontWeight.BOLD),
                     # Botones de capa
                     ft.Row(
                         ref=self.btnRef,
@@ -161,22 +167,18 @@ class RightPanel(ft.Container):
                     ft.Container(
                         content=self._create_mini_map(),
                         expand=True,
-                    )
+                    ),
                 ],
                 spacing=8,
                 scroll=ft.ScrollMode.AUTO,
                 expand=True,
             ))
-        # Cargar datos históricos
-        self.load_historical_pollution_data()
-        self.load_aemet_historical_data()
-
+        
         # Inicializar rangos de fecha para la capa por defecto (pollution)
         self.update_date_ranges_for_layer(self.current_layer)
-        # Trigger initial update para mostrar los marcadores por defecto
-        if self.current_layer == "pollution":
-            self.update_pollution_markers()
-            self.update_weather_summary()
+        
+        # Cargar datos históricos de forma asíncrona
+        self.start_async_data_loading()
 
         print("✅ RightPanel inicializado correctamente")
 
@@ -234,35 +236,66 @@ class RightPanel(ft.Container):
             ],
         )
 
-    def load_historical_pollution_data(self):
-        """Carga metadata de datos históricos (JSON fragmentado por año)."""
-        # Inicializar siempre, incluso si falla la carga
+    def start_async_data_loading(self):
+        """Inicia la carga asíncrona de datos históricos."""
+        # Inicializar estructuras de datos
         self.metadata = {}
         self.year_cache = {}
         self.json_base_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                                            "data", "pollution_historical")
-
-        metadata_path = os.path.join(self.json_base_path, "metadata.json")
-
-        if not os.path.exists(metadata_path):
-            print(f"❌ Archivo metadata no encontrado: {metadata_path}")
-            print(
-                "   ℹ️  Ejecuta utils/generate_json_indexed.py para generar los archivos JSON")
-            return
-
-        print(f"📂 Cargando metadata de datos históricos...")
-
-        try:
-            with open(metadata_path, 'r', encoding='utf-8') as f:
-                self.metadata = json.load(f)
-
-            print(f"✅ Metadata cargada: {
-                  len(self.metadata['years'])} años disponibles")
-            print(f"   📅 Rango: {
-                  min(self.metadata['years'])}-{max(self.metadata['years'])}")
-
-        except Exception as e:
-            print(f"❌ Error al cargar metadata: {e}")
+        
+        # Rutas para AEMET
+        aemet_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                 "data", "aemet_historical")
+        stations_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                     "utils", "valencia_stations.json")
+        
+        
+        def on_complete(success: bool):
+            print(f"\n{'✅' if success else '⚠️'} Carga de datos completada (éxito={success})")
+            self.on_data_loaded()
+        
+        # Crear instancia del loader
+        self.data_loader = AsyncDataLoader()
+        self.data_loader.load_all_async(
+            self.json_base_path,
+            aemet_dir,
+            stations_path,
+            on_complete=on_complete
+        )
+    
+    def on_data_loaded(self):
+        """Callback cuando los datos terminan de cargar."""
+        # Obtener datos cargados
+        pollution_data = self.data_loader.get_pollution_data()
+        aemet_data = self.data_loader.get_aemet_data()
+        
+        if pollution_data:
+            self.metadata = pollution_data.get('metadata', {})
+            self.year_cache = pollution_data.get('year_cache', {})
+        
+        if aemet_data:
+            self.aemet_data = aemet_data.get('aemet_data', {})
+            self.weather_stations_info = aemet_data.get('weather_stations_info', {})
+        
+        # Marcar como cargado
+        self.data_loaded = True
+        
+        # Actualizar UI con datos
+        if self.current_layer == "pollution":
+            self.update_pollution_markers()
+            self.update_weather_summary()
+        
+        if self._page:
+            self._page.update()
+        
+        print("✅ UI actualizada con datos cargados")
+        
+    def load_historical_pollution_data(self):
+        """Carga metadata de datos históricos (JSON fragmentado por año)."""
+        # Este método ahora es llamado por el AsyncDataLoader
+        # Mantenido por compatibilidad pero no se usa directamente
+        pass
 
     def load_year_data(self, year):
         """Carga datos de un año específico bajo demanda."""
@@ -460,69 +493,9 @@ class RightPanel(ft.Container):
 
     def load_aemet_historical_data(self):
         """Carga los datos históricos de AEMET y la información de las estaciones."""
-        stations_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                                     "utils", "valencia_stations.json")
-
-        # Bounding box para Valencia Ciudad (para filtrar estaciones lejanas)
-        VALENCIA_BBOX = {
-            "lat_min": 39.40,
-            "lat_max": 39.55,
-            "lon_min": -0.55,
-            "lon_max": -0.25
-        }
-
-        if os.path.exists(stations_path):
-            try:
-                with open(stations_path, 'r', encoding='utf-8') as f:
-                    stations = json.load(f)
-                    for s in stations:
-                        indicativo = s['indicativo']
-                        lat = self._dms_to_decimal(s['latitud'])
-                        lon = self._dms_to_decimal(s['longitud'])
-
-                        # Filtrar solo estaciones dentro de Valencia Ciudad
-                        if lat and lon:
-                            if (VALENCIA_BBOX["lat_min"] <= lat <= VALENCIA_BBOX["lat_max"] and
-                                    VALENCIA_BBOX["lon_min"] <= lon <= VALENCIA_BBOX["lon_max"]):
-                                self.weather_stations_info[indicativo] = {
-                                    'nombre': s['nombre'],
-                                    'lat': lat,
-                                    'lon': lon
-                                }
-                print(f"✅ Información de {len(
-                    self.weather_stations_info)} estaciones meteorológicas en Valencia Ciudad cargada")
-            except Exception as e:
-                print(f"❌ Error al cargar estaciones: {e}")
-
-        # Cargar datos de cada estación disponible
-        aemet_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                                 "data", "aemet_historical")
-
-        if not os.path.exists(aemet_dir):
-            return
-
-        total_months = 0
-        for filename in os.listdir(aemet_dir):
-            if filename.startswith("monthly_") and filename.endswith(".json"):
-                parts = filename.split("_")
-                if len(parts) >= 2:
-                    indicativo = parts[1]
-                    try:
-                        filepath = os.path.join(aemet_dir, filename)
-                        with open(filepath, 'r', encoding='utf-8') as f:
-                            raw_data = json.load(f)
-                            if indicativo not in self.aemet_data:
-                                self.aemet_data[indicativo] = {}
-
-                            for item in raw_data:
-                                if 'fecha' in item:
-                                    self.aemet_data[indicativo][item['fecha']] = item
-                                    total_months += 1
-                    except Exception as e:
-                        print(f"❌ Error al cargar {filename}: {e}")
-
-        print(f"✅ Datos de AEMET cargados: {total_months} registros de {
-              len(self.aemet_data)} estaciones")
+        # Este método ahora es llamado por el AsyncDataLoader
+        # Mantenido por compatibilidad pero no se usa directamente
+        pass
 
     def update_weather_summary(self):
         """Actualiza el resumen climatológico según la fecha y estación seleccionada."""
@@ -663,7 +636,7 @@ class RightPanel(ft.Container):
               year}, capa={self.current_layer}")
 
         # Actualizar resumen climatológico independientemente de la capa
-        self.update_weather_summary()
+        #self.update_weather_summary()
 
         # Actualizar según la capa activa
         if self.current_layer == "pollution":
