@@ -27,17 +27,14 @@ class MapContainer(ft.Container):
             "Precipitaciones": [],
             "Contaminación (NO2)": [],
             "Contaminación (O3, PM10)": [],
-            "Flujo Tráfico DGT": []
+            "Flujo Tráfico DGT": [],
         }
 
         # Estado para la tarjeta de información
         self.info_card_ref = ft.Ref[ft.Container]()
         self.selected_marker_data = None
 
-        super().__init__(
-            expand=True,
-            content=self._create_content()
-        )
+        super().__init__(expand=True, content=self._create_content())
 
         # Cargar marcadores iniciales
         if self._page_ref:
@@ -54,13 +51,17 @@ class MapContainer(ft.Container):
         if self.marker_layer_ref.current:
             visible_markers = self.all_markers.get(self.current_layer, [])
             self.marker_layer_ref.current.markers = visible_markers
-            print(f"✅ Mostrando {len(visible_markers)
-                                 } marcadores de {self.current_layer}")
+            print(
+                f"✅ Mostrando {len(visible_markers)
+                                 } marcadores de {self.current_layer}"
+            )
 
             # Debug: mostrar primeros marcadores
             if len(visible_markers) > 0:
-                print(f"   🔍 Primer marcador: {
-                      visible_markers[0].coordinates}")
+                print(
+                    f"   🔍 Primer marcador: {
+                      visible_markers[0].coordinates}"
+                )
 
             if self._page_ref:
                 self._page_ref.update()
@@ -79,8 +80,7 @@ class MapContainer(ft.Container):
 
         # Crear contenido según el tipo de dato
         self.info_card_ref.current.visible = True
-        self.info_card_ref.current.content = self._create_info_card_content(
-            data)
+        self.info_card_ref.current.content = self._create_info_card_content(data)
 
         if self._page_ref:
             self._page_ref.update()
@@ -100,24 +100,35 @@ class MapContainer(ft.Container):
         # Header con título y botón cerrar
         header = ft.Row(
             controls=[
-                ft.Icon(data.get("icon", ft.icons.Icons.INFO),
-                        color=data.get("color", COLORS["primary"]), size=24),
+                ft.Icon(
+                    data.get("icon", ft.icons.Icons.INFO),
+                    color=data.get("color", COLORS["primary"]),
+                    size=24,
+                ),
                 ft.Column(
                     spacing=2,
                     controls=[
-                        ft.Text(data.get("titulo", "Información"), size=14,
-                                weight=ft.FontWeight.BOLD, color=COLORS["text_white"]),
-                        ft.Text(tipo.replace("_", " ").title(), size=10,
-                                color=COLORS["text_gray"], italic=True)
+                        ft.Text(
+                            data.get("titulo", "Información"),
+                            size=14,
+                            weight=ft.FontWeight.BOLD,
+                            color=COLORS["text_white"],
+                        ),
+                        ft.Text(
+                            tipo.replace("_", " ").title(),
+                            size=10,
+                            color=COLORS["text_gray"],
+                            italic=True,
+                        ),
                     ],
-                    expand=True
+                    expand=True,
                 ),
                 ft.IconButton(
                     icon=ft.icons.Icons.CLOSE,
                     icon_color=COLORS["text_gray"],
                     icon_size=20,
-                    on_click=self._close_info_card
-                )
+                    on_click=self._close_info_card,
+                ),
             ]
         )
 
@@ -128,14 +139,19 @@ class MapContainer(ft.Container):
         for key, value in data.get("info", {}).items():
             # Verificar si hay datos reales
             # Para tráfico, cualquier estado válido (0-9) es un dato real
-            if tipo == "trafico" and key == "Estado" and value not in ["Sin datos", "Sin información", "Desconocido"]:
+            if (
+                tipo == "trafico"
+                and key == "Estado"
+                and value not in ["Sin datos", "Sin información", "Desconocido"]
+            ):
                 has_valid_data = True
             elif value and str(value) not in ["-", "None", "", "Sin datos"]:
                 has_valid_data = True
 
             # Formatear valor
-            display_value = str(value) if value and str(
-                value) not in ["None", ""] else "Sin datos"
+            display_value = (
+                str(value) if value and str(value) not in ["None", ""] else "Sin datos"
+            )
 
             info_items.append(
                 ft.Container(
@@ -143,11 +159,23 @@ class MapContainer(ft.Container):
                     content=ft.Row(
                         controls=[
                             ft.Text(
-                                f"{key}:", size=11, color=COLORS["text_gray"], weight=ft.FontWeight.BOLD, width=100),
+                                f"{key}:",
+                                size=11,
+                                color=COLORS["text_gray"],
+                                weight=ft.FontWeight.BOLD,
+                                width=100,
+                            ),
                             ft.Text(
-                                display_value, size=11, color=COLORS["text_white"] if display_value != "Sin datos" else COLORS["text_gray"])
+                                display_value,
+                                size=11,
+                                color=(
+                                    COLORS["text_white"]
+                                    if display_value != "Sin datos"
+                                    else COLORS["text_gray"]
+                                ),
+                            ),
                         ]
-                    )
+                    ),
                 )
             )
 
@@ -161,17 +189,20 @@ class MapContainer(ft.Container):
                     border_radius=8,
                     content=ft.Row(
                         controls=[
-                            ft.Icon(ft.icons.Icons.INFO_OUTLINE,
-                                    color=COLORS["traffic"], size=16),
+                            ft.Icon(
+                                ft.icons.Icons.INFO_OUTLINE,
+                                color=COLORS["traffic"],
+                                size=16,
+                            ),
                             ft.Text(
                                 "Sensor sin datos en este momento",
                                 size=10,
                                 color=COLORS["text_gray"],
                                 italic=True,
-                                expand=True
-                            )
+                                expand=True,
+                            ),
                         ]
-                    )
+                    ),
                 )
             )
 
@@ -180,9 +211,13 @@ class MapContainer(ft.Container):
             controls=[
                 header,
                 ft.Divider(color=COLORS["panel_medium"], height=1),
-                ft.Column(spacing=2, controls=info_items, scroll=ft.ScrollMode.AUTO,
-                          height=200 if len(info_items) > 5 else None)
-            ]
+                ft.Column(
+                    spacing=2,
+                    controls=info_items,
+                    scroll=ft.ScrollMode.AUTO,
+                    height=200 if len(info_items) > 5 else None,
+                ),
+            ],
         )
 
     def _create_content(self):
@@ -219,11 +254,9 @@ class MapContainer(ft.Container):
         # Crear botones y guardar sus referencias
         capas = [
             self._create_map_style_button("Normal", ft.icons.Icons.MAP),
-            self._create_map_style_button(
-                "Satélite", ft.icons.Icons.SATELLITE),
+            self._create_map_style_button("Satélite", ft.icons.Icons.SATELLITE),
             self._create_map_style_button("Oscuro", ft.icons.Icons.DARK_MODE),
-            self._create_map_style_button(
-                "Topográfico", ft.icons.Icons.TERRAIN)
+            self._create_map_style_button("Topográfico", ft.icons.Icons.TERRAIN),
         ]
 
         return ft.Container(
@@ -234,15 +267,9 @@ class MapContainer(ft.Container):
                 border_radius=10,
                 padding=10,
                 content=ft.Column(
-                    spacing=8,
-                    controls=[
-                        ft.Column(
-                            spacing=5,
-                            controls=capas
-                        )
-                    ]
-                )
-            )
+                    spacing=8, controls=[ft.Column(spacing=5, controls=capas)]
+                ),
+            ),
         )
 
     def _create_map_style_button(self, style_name, icon):
@@ -265,17 +292,23 @@ class MapContainer(ft.Container):
                     ft.Icon(
                         ref=icon_ref,
                         icon=icon,
-                        color=COLORS["text_black"] if is_active else COLORS["text_gray"],
-                        size=16
+                        color=(
+                            COLORS["text_black"] if is_active else COLORS["text_gray"]
+                        ),
+                        size=16,
                     ),
                     ft.Text(
                         ref=text_ref,
                         value=style_name,
-                        color=COLORS["text_black"] if is_active else COLORS["text_white"],
+                        color=(
+                            COLORS["text_black"] if is_active else COLORS["text_white"]
+                        ),
                         size=12,
-                        weight=ft.FontWeight.BOLD if is_active else ft.FontWeight.NORMAL,
+                        weight=(
+                            ft.FontWeight.BOLD if is_active else ft.FontWeight.NORMAL
+                        ),
                     ),
-                ]
+                ],
             ),
             on_click=lambda e, style=style_name: self.change_map_style(style),
         )
@@ -284,7 +317,7 @@ class MapContainer(ft.Container):
         self.map_style_buttons_refs[style_name] = {
             "container": container_ref,
             "icon": icon_ref,
-            "text": text_ref
+            "text": text_ref,
         }
 
         return button
@@ -301,14 +334,22 @@ class MapContainer(ft.Container):
             is_active = btn_name == style_name
 
             # Actualizar el container (fondo)
-            refs["container"].current.bgcolor = COLORS["primary"] if is_active else COLORS["panel_dark"]
+            refs["container"].current.bgcolor = (
+                COLORS["primary"] if is_active else COLORS["panel_dark"]
+            )
 
             # Actualizar el icono
-            refs["icon"].current.color = COLORS["text_black"] if is_active else COLORS["text_gray"]
+            refs["icon"].current.color = (
+                COLORS["text_black"] if is_active else COLORS["text_gray"]
+            )
 
             # Actualizar el texto
-            refs["text"].current.color = COLORS["text_black"] if is_active else COLORS["text_white"]
-            refs["text"].current.weight = ft.FontWeight.BOLD if is_active else ft.FontWeight.NORMAL
+            refs["text"].current.color = (
+                COLORS["text_black"] if is_active else COLORS["text_white"]
+            )
+            refs["text"].current.weight = (
+                ft.FontWeight.BOLD if is_active else ft.FontWeight.NORMAL
+            )
 
         self.update()
         print(f"✅ Mapa actualizado a {style_name}")
@@ -334,12 +375,20 @@ class MapContainer(ft.Container):
             gradient=ft.LinearGradient(
                 begin=ft.alignment.Alignment(-1, -1),
                 end=ft.alignment.Alignment(1, 1),
-                colors=[COLORS["panel_dark"], COLORS["panel_medium"]]
+                colors=[COLORS["panel_dark"], COLORS["panel_medium"]],
             ),
-            content=ft.Text("Cargando...", color=COLORS["text_white"])
+            content=ft.Text("Cargando...", color=COLORS["text_white"]),
         )
 
-    def _create_marker(self, lat, lon, color, icon=ft.icons.Icons.LOCATION_ON, marker_data=None, tooltip=None):
+    def _create_marker(
+        self,
+        lat,
+        lon,
+        color,
+        icon=ft.icons.Icons.LOCATION_ON,
+        marker_data=None,
+        tooltip=None,
+    ):
         """Crea un marcador clickeable con datos asociados."""
 
         def on_icon_click(e):
@@ -359,14 +408,13 @@ class MapContainer(ft.Container):
                     bgcolor=bg_color,
                     border_radius=20,
                     alignment=ft.alignment.Alignment(0, 0),  # Centrar el icono
-                    tooltip=tooltip if tooltip else (
-                        marker_data.get("titulo") if marker_data else None),
-                    content=ft.Icon(
-                        icon,
-                        color=color,
-                        size=22
-                    )
-                )
+                    tooltip=(
+                        tooltip
+                        if tooltip
+                        else (marker_data.get("titulo") if marker_data else None)
+                    ),
+                    content=ft.Icon(icon, color=color, size=22),
+                ),
             ),
             coordinates=mapa.MapLatitudeLongitude(lat, lon),
         )
@@ -374,7 +422,11 @@ class MapContainer(ft.Container):
     def load_markers(self):
         """Carga marcadores de estaciones de sensores en el mapa."""
         try:
-            from utils import get_cached_weather_data, get_cached_air_quality_data, get_cached_traffic_data
+            from utils import (
+                get_cached_weather_data,
+                get_cached_air_quality_data,
+                get_cached_traffic_data,
+            )
             from utils.avamet_coordinates import get_station_coordinates
 
             weather_data = get_cached_weather_data()
@@ -411,12 +463,17 @@ class MapContainer(ft.Container):
                             "info": {
                                 "Precipitación": f"{clima.prec} mm",
                                 "Temperatura": f"{clima.tmed}°C",
-                                "Humedad": f"{clima.hr}%"
-                            }
+                                "Humedad": f"{clima.hr}%",
+                            },
                         }
 
                         marker = self._create_marker(
-                            coords["lat"], coords["lon"], color, ft.icons.Icons.WATER_DROP, marker_data, tooltip=clima.estacion
+                            coords["lat"],
+                            coords["lon"],
+                            color,
+                            ft.icons.Icons.WATER_DROP,
+                            marker_data,
+                            tooltip=clima.estacion,
                         )
                         self.all_markers["Precipitaciones"].append(marker)
 
@@ -446,18 +503,25 @@ class MapContainer(ft.Container):
                             "info": {
                                 "NO2": f"{estacion.no2} μg/m³",
                                 "Calidad": estacion.calidad_am,
-                                "Estación": estacion.direccion
-                            }
+                                "Estación": estacion.direccion,
+                            },
                         }
 
                         marker = self._create_marker(
-                            lat, lon, color, ft.icons.Icons.CLOUD, marker_data, tooltip=estacion.direccion
+                            lat,
+                            lon,
+                            color,
+                            ft.icons.Icons.CLOUD,
+                            marker_data,
+                            tooltip=estacion.direccion,
                         )
                         self.all_markers["Contaminación (NO2)"].append(marker)
 
             # Marcadores de contaminación O3/PM10
             for estacion in air_quality_data:
-                if estacion.geo_point_2d and (estacion.o3 != "-" or estacion.pm10 != "-"):
+                if estacion.geo_point_2d and (
+                    estacion.o3 != "-" or estacion.pm10 != "-"
+                ):
                     lat = estacion.geo_point_2d.get("lat")
                     lon = estacion.geo_point_2d.get("lon")
 
@@ -471,15 +535,19 @@ class MapContainer(ft.Container):
                             "info": {
                                 "O3": f"{estacion.o3} μg/m³",
                                 "PM10": f"{estacion.pm10} μg/m³",
-                                "Estación": estacion.direccion
-                            }
+                                "Estación": estacion.direccion,
+                            },
                         }
 
                         marker = self._create_marker(
-                            lat, lon, COLORS["pollution"], ft.icons.Icons.BLUR_ON, marker_data, tooltip=estacion.direccion
+                            lat,
+                            lon,
+                            COLORS["pollution"],
+                            ft.icons.Icons.BLUR_ON,
+                            marker_data,
+                            tooltip=estacion.direccion,
                         )
-                        self.all_markers["Contaminación (O3, PM10)"].append(
-                            marker)
+                        self.all_markers["Contaminación (O3, PM10)"].append(marker)
 
             # Marcadores de tráfico DGT
             for estacion in traffic_data:
@@ -493,21 +561,20 @@ class MapContainer(ft.Container):
 
                         # Obtener descripción y color sugerido del estado
                         estado_desc, color_sugerido = get_estado_descripcion(
-                            estacion.estado)
+                            estacion.estado
+                        )
 
                         # Determinar color según estado del tráfico
                         color_map = {
                             "green": COLORS["primary"],
                             "yellow": COLORS["traffic"],
                             "red": COLORS["event_danger"],
-                            "gray": COLORS["text_gray"]
+                            "gray": COLORS["text_gray"],
                         }
-                        color = color_map.get(
-                            color_sugerido, COLORS["traffic"])
+                        color = color_map.get(color_sugerido, COLORS["traffic"])
 
                         # Construir info solo con datos disponibles
-                        info = {"Estado": estado_desc,
-                                "Código": f"{estacion.estado}"}
+                        info = {"Estado": estado_desc, "Código": f"{estacion.estado}"}
 
                         # Solo agregar campos si tienen datos reales
                         if estacion.velocidad and estacion.velocidad != "-":
@@ -522,41 +589,93 @@ class MapContainer(ft.Container):
                             "titulo": estacion.denominacion,
                             "icon": ft.icons.Icons.TRAFFIC,
                             "color": color,
-                            "info": info
+                            "info": info,
                         }
 
                         marker = self._create_marker(
-                            lat, lon, color, ft.icons.Icons.TRAFFIC, marker_data, tooltip=estacion.denominacion
+                            lat,
+                            lon,
+                            color,
+                            ft.icons.Icons.TRAFFIC,
+                            marker_data,
+                            tooltip=estacion.denominacion,
                         )
                         self.all_markers["Flujo Tráfico DGT"].append(marker)
 
             # Actualizar marcadores visibles
             self.update_visible_markers()
 
-            total_markers = sum(len(markers)
-                                for markers in self.all_markers.values())
+            total_markers = sum(len(markers) for markers in self.all_markers.values())
             print(f"✅ {total_markers} marcadores cargados en total")
-            print(f"   📍 Precipitaciones: {
-                  len(self.all_markers['Precipitaciones'])}")
-            print(f"   📍 NO2: {len(self.all_markers['Contaminación (NO2)'])}")
             print(
-                f"   📍 O3/PM10: {len(self.all_markers['Contaminación (O3, PM10)'])}")
-            print(f"   📍 Tráfico: {
-                  len(self.all_markers['Flujo Tráfico DGT'])}")
+                f"   📍 Precipitaciones: {
+                  len(self.all_markers['Precipitaciones'])}"
+            )
+            print(f"   📍 NO2: {len(self.all_markers['Contaminación (NO2)'])}")
+            print(f"   📍 O3/PM10: {len(self.all_markers['Contaminación (O3, PM10)'])}")
+            print(
+                f"   📍 Tráfico: {
+                  len(self.all_markers['Flujo Tráfico DGT'])}"
+            )
 
         except Exception as e:
             print(f"❌ Error al cargar marcadores: {e}")
             import traceback
+
             traceback.print_exc()
 
     def _create_footer(self):
-        """Crea el footer con fuente de datos."""
+        """Crea el footer con fuente de datos y diseño mejorado."""
         return ft.Container(
-            bottom=20,
-            left=20,
-            content=ft.Text(
-                "Source: AVAMET, GVA OpenData & Valencia Traffic",
-                color=COLORS["primary"],
-                size=10,
-            )
+            bottom=0,
+            left=0,
+            right=0,
+            height=60,
+            gradient=ft.LinearGradient(
+                begin=ft.alignment.Alignment.CENTER_RIGHT,
+                end=ft.alignment.Alignment.CENTER_RIGHT,
+                colors=[
+                    "#1a1a2e",
+                    "#16213e",
+                    "#0f3460",
+                ],
+            ),
+            padding=ft.padding.symmetric(horizontal=30, vertical=15),
+            content=ft.Row(
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Row(
+                        spacing=10,
+                        controls=[
+                            ft.Icon(
+                                ft.Icons.ONLINE_PREDICTION,
+                                color="#00d9ff",
+                                size=24,
+                            ),
+                            ft.Text(
+                                "REALTIME DATA",
+                                color="#00d9ff",
+                                size=16,
+                                weight=ft.FontWeight.W_600,
+                                font_family="Consolas",
+                            ),
+                        ],
+                    ),
+                    ft.Container(
+                        width=8,
+                        height=8,
+                        bgcolor="#00ff88",
+                        border_radius=4,
+                        animate=ft.Animation(duration=1000, curve=ft.AnimationCurve.EASE_IN_OUT),
+                        opacity=0.8,
+                    ),
+                ],
+            ),
+            shadow=ft.BoxShadow(
+                spread_radius=1,
+                blur_radius=10,
+                color=ft.Colors.with_opacity(0.3, "#000000"),
+                offset=ft.Offset(0, -2),
+            ),
         )

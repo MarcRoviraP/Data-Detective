@@ -141,6 +141,7 @@ class RightPanel(ft.Container):
                                 dense=True,
                                 hint_text="Mes",
                                 value="11",
+                                
                             ),
                             ft.Dropdown(
                                 ref=self.year_dropdown_ref,

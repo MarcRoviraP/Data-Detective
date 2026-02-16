@@ -193,7 +193,7 @@ class LeftPanel(ft.Container):
             spacing=10,
             controls=[
                 ft.Text(
-                    "CAPAS DE INTELIGENCIA",
+                    "TIPOS DE INFORMACIÓN",
                     color=COLORS["text_gray"],
                     size=10,
                     weight=ft.FontWeight.BOLD,
@@ -208,7 +208,7 @@ class LeftPanel(ft.Container):
             spacing=10,
             controls=[
                 ft.Text(
-                    "NODOS DE DETECCIÓN ACTIVOS",
+                    "NODOS MÁS RELEVANTES",
                     color=COLORS["text_gray"],
                     size=10,
                     weight=ft.FontWeight.BOLD,
