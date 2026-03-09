@@ -39,7 +39,6 @@ def main(page: ft.Page):
     page.theme = ft.Theme(
         color_scheme_seed="blue"
     )
-
     # Verificar y generar datos si es necesario
     from utils.data_verifier import verify_and_generate_data
 
