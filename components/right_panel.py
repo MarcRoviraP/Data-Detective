@@ -46,7 +46,7 @@ class RightPanel(ft.Container):
         self.date_ranges = {
             "pollution": {"year_start": 1994, "year_end": 2025, "month_start": 4, "month_end": 11},
             "rain": {"year_start": 2007, "year_end": 2024, "month_start": 1, "month_end": 12},
-            "traffic": {"year_start": 2000, "year_end": 2026, "month_start": 1, "month_end": 1}
+            "traffic": {"year_start": 2016, "year_end": 2026, "month_start": 1, "month_end": 1}
         }
 
         # Datos AEMET
@@ -54,7 +54,13 @@ class RightPanel(ft.Container):
         self.weather_markers = []
         self.weather_stations_info = {}
         self.selected_weather_station = "8414A"  # Default Valencia Aeropuerto
-
+        
+        # Datos Tráfico
+        self.traffic_data = {}
+        self.traffic_stations_info = {}
+        self.traffic_markers = []
+        # self.traffic_data_df será inicializado en on_data_loaded si hay parquet
+        
         # Estado de carga
         self.data_loaded = False
 
@@ -266,6 +272,8 @@ class RightPanel(ft.Container):
                                  "data", "aemet_historical")
         stations_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                                      "utils", "valencia_stations.json")
+        traffic_parquet_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                            "data", "trafico_valencia.parquet")
 
         def on_complete(success: bool):
             print(
@@ -278,6 +286,7 @@ class RightPanel(ft.Container):
             self.json_base_path,
             aemet_dir,
             stations_path,
+            traffic_parquet_path=traffic_parquet_path,
             on_complete=on_complete
         )
 
@@ -286,15 +295,26 @@ class RightPanel(ft.Container):
         # Obtener datos cargados
         pollution_data = self.data_loader.get_pollution_data()
         aemet_data = self.data_loader.get_aemet_data()
+        traffic_data = self.data_loader.get_traffic_data()
 
-        if pollution_data:
+        if pollution_data is not None:
             self.metadata = pollution_data.get('metadata', {})
             self.year_cache = pollution_data.get('year_cache', {})
 
-        if aemet_data:
+        if aemet_data is not None:
             self.aemet_data = aemet_data.get('aemet_data', {})
             self.weather_stations_info = aemet_data.get(
                 'weather_stations_info', {})
+            
+        if traffic_data is not None:
+             # Si es un DataFrame (parquet)
+            import pandas as pd
+            if isinstance(traffic_data, pd.DataFrame):
+                self.traffic_data_df = traffic_data
+            else:
+                self.traffic_data = traffic_data.get('traffic_data', {})
+                self.traffic_stations_info = traffic_data.get(
+                    'traffic_stations_info', {})
 
         # Marcar como cargado
         self.data_loaded = True
@@ -456,8 +476,7 @@ class RightPanel(ft.Container):
         # Actualizar capa de marcadores
         if self.marker_layer_ref.current:
             self.marker_layer_ref.current.markers = self.pollution_markers
-            print(f"✅ {len(self.pollution_markers)
-                       } marcadores de contaminación agregados al mapa")
+            print(f"✅ {len(self.pollution_markers)} marcadores de contaminación agregados al mapa")
             if self._page:
                 self._page.update()
 
@@ -557,6 +576,148 @@ class RightPanel(ft.Container):
         if self._page:
             self._page.update()
 
+    def update_traffic_markers(self):
+        """Actualiza los marcadores de tráfico en el mini-mapa."""
+        print("\n🚗 update_traffic_markers llamado")
+        
+        if not hasattr(self, 'traffic_stations_info') or not self.traffic_stations_info:
+            print("  ⚠️ No hay información de estaciones de tráfico para tiempo real")
+            return
+
+        self.traffic_markers = []
+
+        for indicativo, info in self.traffic_stations_info.items():
+            if not info['lat'] or not info['lon']:
+                continue
+
+            color = ft.Colors.BLUE if indicativo == self.selected_traffic_station else ft.Colors.BLUE_200
+
+            marker_data = {
+                "tipo": "trafico_historico",
+                "indicativo": indicativo,
+                "titulo": info['nombre']
+            }
+
+            tooltip = f"Estación: {info['nombre']}"
+            if indicativo == self.selected_traffic_station:
+                tooltip += " (Seleccionada)"
+
+            # Crear marcador interactivo
+            marker_content = ft.Container(
+                width=30,
+                height=30,
+                bgcolor=color + "33",
+                border_radius=15,
+                alignment=ft.alignment.Alignment(0, 0),
+                content=ft.Icon(
+                    ft.icons.Icons.GRAIN,
+                    color=color,
+                    size=18
+                ),
+                tooltip=tooltip,
+                on_click=lambda e, ind=indicativo: self.on_traffic_station_click(
+                    ind)
+            )
+
+            marker = mapa.Marker(
+                content=marker_content,
+                coordinates=mapa.MapLatitudeLongitude(
+                    info['lat'], info['lon']),
+            )
+            self.traffic_markers.append(marker)
+
+        if self.marker_layer_ref.current:
+            self.marker_layer_ref.current.markers = self.traffic_markers
+            print(f"✅ {len(self.traffic_markers)} marcadores de tráfico agregados al mapa")
+            if self._page:
+                self._page.update()
+
+    def update_historical_traffic_markers(self):
+        """Actualiza los marcadores de tráfico usando datos históricos del parquet."""
+        print("\n🚗 update_historical_traffic_markers llamado")
+        
+        if not hasattr(self, 'traffic_data_df') or self.traffic_data_df is None:
+            print("  ⚠️ No hay datos de tráfico históricos cargados")
+            return
+        
+        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
+        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+        
+        if not month or not year or not hasattr(self, 'traffic_data_df'):
+            print("  ⚠️ No hay datos de tráfico o fecha seleccionada")
+            return
+
+        # Filtrar por fecha (YYYY-MM)
+        month_int = int(month)
+        date_str = f"{year}-{month_int:02}"
+        
+        df_filtered = self.traffic_data_df[self.traffic_data_df['FECHA'] == date_str]
+        print(f"  🔍 Registros encontrados para {date_str}: {len(df_filtered)}")
+
+        self.traffic_markers = []
+        
+        # Obtener estaciones en tiempo real para intentar matching de coordenadas
+        try:
+            from utils.RealTimeTrafficValencia import get_traffic_data
+            rt_stations = get_traffic_data()
+            desc_to_coords = {s.denominacion.upper(): (s.geo_point_2d['lat'], s.geo_point_2d['lon']) 
+                             for s in rt_stations if s.geo_point_2d}
+        except Exception as e:
+            print(f"⚠️ Error al obtener estaciones realtime para matching: {e}")
+            desc_to_coords = {}
+
+        for _, row in df_filtered.iterrows():
+            ata_id = row['ATA']
+            desc = row['DESCRIPCION']
+            imd = row['IMD']
+            
+            # Intentar matching por descripción (fuzzy o exacto)
+            coords = desc_to_coords.get(desc.upper())
+            
+            if coords:
+                lat, lon = coords
+                color = ft.Colors.RED
+                
+                marker_data = {
+                    "tipo": "trafico_historico",
+                    "titulo": desc,
+                    "info": {
+                        "ID ATA": ata_id,
+                        "Ubicación": desc,
+                        "IMD (Intensidad)": f"{imd:.1f} veh/día",
+                        "Período": date_str
+                    }
+                }
+
+                tooltip = f"ATA {ata_id}: {desc} (IMD: {imd:.0f})"
+
+                marker = self._create_marker(
+                    lat, lon, color, ft.icons.Icons.TRAFFIC,
+                    marker_data, tooltip,
+                    on_click=lambda e, r=row: self.on_historical_traffic_click(r)
+                )
+                self.traffic_markers.append(marker)
+
+        if self.marker_layer_ref.current:
+            self.marker_layer_ref.current.markers = self.traffic_markers
+            print(f"✅ {len(self.traffic_markers)} marcadores históricos de tráfico agregados")
+            if self._page:
+                self._page.update()
+
+    def on_historical_traffic_click(self, row):
+        """Manejador al hacer clic en un punto de tráfico histórico."""
+        print(f"📍 Punto de tráfico seleccionado: {row['DESCRIPCION']}")
+        
+        self.pollution_info_text.value = (
+            f"🚗 ATA: {row['ATA']}\n"
+            f"📍 {row['DESCRIPCION']}\n"
+            f"📈 IMD: {row['IMD']:.1f} veh/día\n"
+            f"📅 Fecha: {row['FECHA']}"
+        )
+        self.pollution_container.visible = True
+        
+        if self._page:
+            self._page.update()
     def update_weather_markers(self):
         """Actualiza los marcadores de estaciones meteorológicas."""
         print("\n🌧️ update_weather_markers llamado")
@@ -648,6 +809,14 @@ class RightPanel(ft.Container):
 
     def on_search_click(self, e):
         """Manejador del botón de búsqueda."""
+        if not self.data_loaded:
+            print("  ⚠️ Datos aún cargando, por favor espere...")
+            if self._page:
+                self._page.snack_bar = ft.SnackBar(ft.Text("Los datos aún se están cargando..."))
+                self._page.snack_bar.open = True
+                self._page.update()
+            return
+
         month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
         year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
         print(f"\n🔍 Búsqueda solicitada: mes={month}, año={
@@ -664,8 +833,11 @@ class RightPanel(ft.Container):
             print("  → Actualizando marcadores meteorológicos...")
             self.update_weather_markers()
         else:
-            print(f"  ⚠️ Capa '{
-                  self.current_layer}' no soporta búsqueda histórica aún")
+            print("  → Actualizando marcadores de tráfico...")
+            if hasattr(self, 'traffic_data_df'):
+                self.update_historical_traffic_markers()
+            else:
+                self.update_traffic_markers()
 
     def on_year_change(self, e):
         """Manejador cuando cambia el año - actualiza los meses disponibles."""
