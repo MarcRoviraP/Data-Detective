@@ -15,6 +15,307 @@ from config.map_styles import MAP_STYLES
 from utils.async_data_loader import AsyncDataLoader
 
 
+MONTH_NAMES = [
+    "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+    "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
+]
+
+
+class MonthYearPicker(ft.Row):
+    """
+    Control compacto de selección de mes y año.
+    Muestra el período actual y permite navegar con flechas
+    o abrir un diálogo modal con cuadrícula de meses y años.
+    """
+
+    def __init__(self, page: ft.Page,
+                 initial_month: int = 1,
+                 initial_year: int = 2025,
+                 year_start: int = 1994,
+                 year_end: int = 2025,
+                 month_start: int = 1,
+                 month_end: int = 12,
+                 on_change=None):
+        super().__init__()
+        # Guardamos el estado en un dict para evitar que Flet intercepte
+        # los setattr y llame a su _notify(name, value) interno.
+        object.__setattr__(self, '_state', {
+            'month': initial_month,
+            'year': initial_year,
+            'year_start': year_start,
+            'year_end': year_end,
+            'month_start': month_start,
+            'month_end': month_end,
+            'on_change_cb': on_change,
+            'page': page,
+        })
+
+        # Label central clickable
+        self._label_text = ft.Text(
+            self._format_label(),
+            color=ft.Colors.WHITE,
+            weight=ft.FontWeight.W_500,
+        )
+        self._label = ft.Container(
+            content=self._label_text,
+            bgcolor=ft.Colors.BLUE_GREY_800,
+            border_radius=6,
+            padding=ft.padding.symmetric(horizontal=12, vertical=6),
+            on_click=self._open_dialog,
+            ink=True,
+        )
+
+        self.controls = [
+            ft.IconButton(
+                icon=ft.Icons.CHEVRON_LEFT,
+                icon_size=18,
+                tooltip="Mes anterior",
+                on_click=self._prev_month,
+                icon_color=ft.Colors.BLUE_300,
+            ),
+            self._label,
+            ft.IconButton(
+                icon=ft.Icons.CHEVRON_RIGHT,
+                icon_size=18,
+                tooltip="Mes siguiente",
+                on_click=self._next_month,
+                icon_color=ft.Colors.BLUE_300,
+            ),
+        ]
+        self.spacing = 0
+        self.vertical_alignment = ft.CrossAxisAlignment.CENTER
+
+    # ── helpers ────────────────────────────────────────────────────────────
+
+    @property
+    def selected_month(self): return self._state['month']
+    @property
+    def selected_year(self): return self._state['year']
+    @property
+    def year_start(self): return self._state['year_start']
+    @property
+    def year_end(self): return self._state['year_end']
+    @property
+    def month_start(self): return self._state['month_start']
+    @property
+    def month_end(self): return self._state['month_end']
+
+    def _set(self, **kwargs):
+        """Actualiza valores del estado sin que Flet los intercepte."""
+        self._state.update(kwargs)
+
+    def _format_label(self):
+        return f"{MONTH_NAMES[self._state['month'] - 1]} {self._state['year']}"
+
+    def _refresh_label(self):
+        self._label_text.value = self._format_label()
+        if self._state['page']:
+            self._state['page'].update()
+
+    def _clamp_month_to_range(self):
+        s = self._state
+        if s['year'] == s['year_start']:
+            s['month'] = max(s['month'], s['month_start'])
+        if s['year'] == s['year_end']:
+            s['month'] = min(s['month'], s['month_end'])
+
+    def _fire_change(self):
+        cb = self._state.get('on_change_cb')
+        if cb:
+            cb(self._state['month'], self._state['year'])
+
+    # ── navigation ─────────────────────────────────────────────────────────
+
+    def _prev_month(self, e):
+        s = self._state
+        m, y = s['month'] - 1, s['year']
+        if m < 1:
+            m, y = 12, y - 1
+        if y < s['year_start'] or (y == s['year_start'] and m < s['month_start']):
+            return
+        self._set(month=m, year=y)
+        self._refresh_label()
+        self._fire_change()
+
+    def _next_month(self, e):
+        s = self._state
+        m, y = s['month'] + 1, s['year']
+        if m > 12:
+            m, y = 1, y + 1
+        if y > s['year_end'] or (y == s['year_end'] and m > s['month_end']):
+            return
+        self._set(month=m, year=y)
+        self._refresh_label()
+        self._fire_change()
+
+    # ── modal dialog ───────────────────────────────────────────────────────
+
+    def _open_dialog(self, e):
+        """Abre el diálogo de selección de mes y año."""
+        print(
+            f"📅 [MonthYearPicker] _open_dialog: year={self._state['year']}, month={self._state['month']}")
+        self._state['dialog_year'] = self._state['year']
+        print(f"   dialog_year seteado a {self._state['dialog_year']}")
+        self._build_and_show_dialog()
+        print("   _build_and_show_dialog completado")
+
+    def _build_and_show_dialog(self):
+        """Construye y muestra el diálogo modal."""
+        # Título con navegación de año
+        year_nav = ft.Row(
+            controls=[
+                ft.IconButton(
+                    icon=ft.Icons.CHEVRON_LEFT,
+                    icon_size=18,
+                    on_click=self._dialog_prev_year,
+                    icon_color=ft.Colors.BLUE_300,
+                ),
+                ft.Text(
+                    str(self._state['dialog_year']),
+                    size=16,
+                    weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER,
+                    expand=True,
+                ),
+                ft.IconButton(
+                    icon=ft.Icons.CHEVRON_RIGHT,
+                    icon_size=18,
+                    on_click=self._dialog_next_year,
+                    icon_color=ft.Colors.BLUE_300,
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
+        # Cuadrícula de meses (3 columnas × 4 filas)
+        month_grid = ft.GridView(
+            runs_count=3,
+            max_extent=90,
+            spacing=6,
+            run_spacing=6,
+            height=190,
+        )
+        self._populate_month_grid(month_grid)
+
+        self._dialog_year_text = year_nav.controls[1]
+        self._month_grid = month_grid
+
+        page = self._state['page']
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=year_nav,
+            content=ft.Container(
+                content=month_grid,
+                width=280,
+                padding=ft.padding.symmetric(vertical=4),
+            ),
+            actions=[
+                ft.TextButton("Cancelar", on_click=self._close_dialog),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+            bgcolor="#1e2530",
+            shape=ft.RoundedRectangleBorder(radius=12),
+        )
+        object.__setattr__(self, '_active_dialog', dlg)
+        page.overlay.append(dlg)
+        dlg.open = True
+        page.update()
+
+    def _populate_month_grid(self, grid: ft.GridView):
+        """Rellena la cuadrícula con botones de mes."""
+        s = self._state
+        dy = s['dialog_year']
+        grid.controls.clear()
+        for i, name in enumerate(MONTH_NAMES, start=1):
+            m_num = i
+            is_selected = (m_num == s['month'] and dy == s['year'])
+            disabled = (
+                (dy == s['year_start'] and m_num < s['month_start']) or
+                (dy == s['year_end'] and m_num > s['month_end']) or
+                dy < s['year_start'] or dy > s['year_end']
+            )
+
+            text_color = (
+                ft.Colors.WHITE if is_selected
+                else (ft.Colors.WHITE70 if not disabled else ft.Colors.BLUE_GREY_500)
+            )
+            bg_color = (
+                ft.Colors.BLUE_700 if is_selected
+                else (ft.Colors.BLUE_GREY_700 if not disabled else ft.Colors.BLUE_GREY_900)
+            )
+            btn = ft.Container(
+                content=ft.Text(
+                    name,
+                    color=text_color,
+                    text_align=ft.TextAlign.CENTER,
+                    weight=ft.FontWeight.W_500,
+                ),
+                width=80,
+                height=40,
+                bgcolor=bg_color,
+                border_radius=8,
+                alignment=ft.Alignment(0, 0),
+                on_click=(lambda e, m=m_num: self._select_month(m)
+                          ) if not disabled else None,
+                ink=not disabled,
+                opacity=0.4 if disabled else 1.0,
+            )
+            grid.controls.append(btn)
+
+    def _dialog_prev_year(self, e):
+        s = self._state
+        if s['dialog_year'] > s['year_start']:
+            s['dialog_year'] -= 1
+            self._dialog_year_text.value = str(s['dialog_year'])
+            self._populate_month_grid(self._month_grid)
+            self._state['page'].update()
+
+    def _dialog_next_year(self, e):
+        s = self._state
+        if s['dialog_year'] < s['year_end']:
+            s['dialog_year'] += 1
+            self._dialog_year_text.value = str(s['dialog_year'])
+            self._populate_month_grid(self._month_grid)
+            self._state['page'].update()
+
+    def _select_month(self, month: int):
+        print(
+            f"✅ [MonthYearPicker] _select_month: mes={month}, año={self._state['dialog_year']}")
+        self._set(month=month, year=self._state['dialog_year'])
+        self._close_dialog(None)
+        self._refresh_label()
+        self._fire_change()
+        print(
+            f"   Selección aplicada: {self._state['month']}/{self._state['year']}")
+
+    def _close_dialog(self, e):
+        page = self._state['page']
+        dlg = getattr(self, '_active_dialog', None)
+        if dlg is not None:
+            dlg.open = False
+            page.update()
+
+    # ── public API ─────────────────────────────────────────────────────────
+
+    @property
+    def value(self):
+        """Devuelve (mes, año) como tupla de strings."""
+        s = self._state
+        return str(s['month']), str(s['year'])
+
+    def set_range(self, year_start, year_end, month_start, month_end):
+        """Actualiza los rangos válidos y corrige la selección si es necesario."""
+        s = self._state
+        s['year_start'] = year_start
+        s['year_end'] = year_end
+        s['month_start'] = month_start
+        s['month_end'] = month_end
+        s['year'] = max(year_start, min(year_end, s['year']))
+        self._clamp_month_to_range()
+        self._refresh_label()
+
+
 class RightPanel(ft.Container):
     """
     Panel lateral derecho con archivo histórico y datos consolidados.
@@ -27,20 +328,26 @@ class RightPanel(ft.Container):
         self._page = page
         self.width = 500
         self.animate = ft.Animation(
-            duration=300, 
+            duration=300,
             curve=ft.AnimationCurve.EASE_IN_OUT
-        )   
+        )
         self.on_hover = self.animarTamanio
-    
-        
+
         self.current_layer = "pollution"  # Default layer
         self.btnRef = ft.Ref[ft.Row]()
         self.map_ref = ft.Ref[mapa.Map]()
         self.marker_layer_ref = ft.Ref[mapa.MarkerLayer]()
 
-        # Referencias para dropdowns
-        self.month_dropdown_ref = ft.Ref[ft.Dropdown]()
-        self.year_dropdown_ref = ft.Ref[ft.Dropdown]()
+        # Date picker de mes/año
+        self.period_picker = MonthYearPicker(
+            page=page,
+            initial_month=11,
+            initial_year=2025,
+            year_start=1994,
+            year_end=2025,
+            month_start=4,
+            month_end=11,
+        )
 
         # Rangos de fechas por capa
         self.date_ranges = {
@@ -66,7 +373,7 @@ class RightPanel(ft.Container):
 
         self.weather_info_text = ft.Text("", size=12, color=ft.Colors.BLUE_400)
         self.weather_container = ft.Container(
-            
+
             content=ft.Column([
                 ft.Text("RESUMEN CLIMATOLÓGICO", size=14,
                         weight=ft.FontWeight.BOLD),
@@ -76,7 +383,7 @@ class RightPanel(ft.Container):
             bgcolor="#161b22",
             border_radius=10,
             visible=False,
-            
+
         )
 
         self.pollution_info_text = ft.Text(
@@ -134,30 +441,12 @@ class RightPanel(ft.Container):
                         spacing=5,
                     ),
 
-                    # Título + Selectores + Botón de búsqueda
+                    # Título + Date Picker + Botón de búsqueda
                     ft.Row(
                         controls=[
                             ft.Text("Período:", size=12,
                                     weight=ft.FontWeight.BOLD),
-                            ft.Dropdown(
-                                ref=self.month_dropdown_ref,
-                                options=[ft.dropdown.Option(
-                                    str(i)) for i in range(1, 13)],
-                                width=120,
-                                dense=True,
-                                hint_text="Mes",
-                                value="11",
-                                
-                            ),
-                            ft.Dropdown(
-                                ref=self.year_dropdown_ref,
-                                options=[ft.dropdown.Option(
-                                    str(i)) for i in range(1994, 2027)],
-                                width=120,
-                                dense=True,
-                                hint_text="Año",
-                                value="2025",
-                            ),
+                            self.period_picker,
                             ft.IconButton(
                                 icon=ft.icons.Icons.SEARCH,
                                 tooltip="Buscar datos históricos",
@@ -183,7 +472,7 @@ class RightPanel(ft.Container):
                     ft.Container(
                         content=self._create_mini_map(),
                         expand=True,
-                        
+
                     ),
                 ],
                 spacing=8,
@@ -198,12 +487,13 @@ class RightPanel(ft.Container):
         self.start_async_data_loading()
 
         print("✅ RightPanel inicializado correctamente")
+
     def animarTamanio(self, e):
         if self.width == 500:
             self.width = 800
         else:
             self.width = 500
-        self.update() 
+        self.update()
 
     def setup_event_handlers(self):
         """Configurar event handlers después de que la página esté lista."""
@@ -243,7 +533,7 @@ class RightPanel(ft.Container):
         """Crea un mapa simplificado para el panel derecho."""
         return mapa.Map(
             ref=self.map_ref,
-            
+
             height=400,
             # expand=True, # Removed to avoid layout conflict
             initial_center=mapa.MapLatitudeLongitude(39.4699, -0.3763),
@@ -405,9 +695,8 @@ class RightPanel(ft.Container):
         """Actualiza los marcadores de contaminación según la fecha seleccionada."""
         print("\n🗺️ update_pollution_markers llamado")
 
-        # Obtener valores de los dropdowns
-        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
-        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+        # Obtener valores del date picker
+        month, year = self.period_picker.value
 
         print(f"  Mes seleccionado: {month}")
         print(f"  Año seleccionado: {year}")
@@ -536,8 +825,7 @@ class RightPanel(ft.Container):
 
     def update_weather_summary(self):
         """Actualiza el resumen climatológico según la fecha y estación seleccionada."""
-        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
-        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+        month, year = self.period_picker.value
 
         if not month or not year or not self.selected_weather_station:
             self.weather_container.visible = False
@@ -841,28 +1129,23 @@ class RightPanel(ft.Container):
 
     def on_year_change(self, e):
         """Manejador cuando cambia el año - actualiza los meses disponibles."""
-        print(f"\n🔄 on_year_change llamado: año={
-              e.control.value if e and e.control else 'N/A'}")
-        # Actualizar rangos de mes según el año seleccionado
+        print(f"\n🔄 on_year_change llamado")
         self.update_date_ranges_for_layer(self.current_layer)
-        # Luego actualizar los marcadores
         self.on_date_change(e)
 
     def on_date_change(self, e):
-        """Manejador de cambio de fecha en los dropdowns."""
-        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
-        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
-        print(f"\n📅 on_date_change llamado: mes={
-              month}, año={year}, capa={self.current_layer}")
+        """Manejador de cambio de fecha."""
+        month, year = self.period_picker.value
+        print(
+            f"\n📅 on_date_change llamado: mes={month}, año={year}, capa={self.current_layer}")
 
         # Auto-actualizar según la capa activa
         if self.current_layer == "pollution":
             print("  → Actualizando marcadores de contaminación...")
             self.update_pollution_markers()
         else:
-            print(f"  ⚠️ Capa '{
-                  self.current_layer}' no soporta auto-actualización aún")
-        # Para las otras capas, podrías agregar lógica similar aquí
+            print(
+                f"  ⚠️ Capa '{self.current_layer}' no soporta auto-actualización aún")
 
     def update_date_ranges_for_layer(self, layer: str):
         """Actualiza los rangos de fechas disponibles según la capa seleccionada."""
@@ -871,62 +1154,13 @@ class RightPanel(ft.Container):
 
         range_config = self.date_ranges[layer]
 
-        # Guardar valores actuales antes de actualizar opciones
-        current_month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
-        current_year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
-
-        # Actualizar opciones de año
-        if self.year_dropdown_ref.current:
-            year_options = []
-            for year in range(range_config["year_start"], range_config["year_end"] + 1):
-                year_options.append(ft.dropdown.Option(str(year)))
-
-            self.year_dropdown_ref.current.options = year_options
-
-            # Mantener valor actual si está en rango, si no usar el último
-            if current_year and int(current_year) >= range_config["year_start"] and int(current_year) <= range_config["year_end"]:
-                self.year_dropdown_ref.current.value = current_year
-            else:
-                self.year_dropdown_ref.current.value = str(
-                    range_config["year_end"])
-
-        # Actualizar opciones de mes
-        if self.month_dropdown_ref.current:
-            # Usar el año seleccionado actual para determinar meses disponibles
-            selected_year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
-
-            month_options = []
-            if selected_year == str(range_config["year_end"]):
-                # Si es el último año, solo mostrar meses hasta month_end
-                for month in range(1, range_config["month_end"] + 1):
-                    month_options.append(ft.dropdown.Option(str(month)))
-                # Mantener valor actual si está en rango
-                if current_month and int(current_month) <= range_config["month_end"]:
-                    self.month_dropdown_ref.current.value = current_month
-                else:
-                    self.month_dropdown_ref.current.value = str(
-                        range_config["month_end"])
-            elif selected_year == str(range_config["year_start"]):
-                # Si es el primer año, solo mostrar meses desde month_start
-                for month in range(range_config["month_start"], 13):
-                    month_options.append(ft.dropdown.Option(str(month)))
-                # Mantener valor actual si está en rango
-                if current_month and int(current_month) >= range_config["month_start"]:
-                    self.month_dropdown_ref.current.value = current_month
-                else:
-                    self.month_dropdown_ref.current.value = str(
-                        range_config["month_start"])
-            else:
-                # Año intermedio, mostrar todos los meses
-                for month in range(1, 13):
-                    month_options.append(ft.dropdown.Option(str(month)))
-                # Mantener valor actual
-                if current_month:
-                    self.month_dropdown_ref.current.value = current_month
-                else:
-                    self.month_dropdown_ref.current.value = "1"
-
-            self.month_dropdown_ref.current.options = month_options
+        # Actualizar rangos en el picker (ajusta la selección si queda fuera)
+        self.period_picker.set_range(
+            year_start=range_config["year_start"],
+            year_end=range_config["year_end"],
+            month_start=range_config["month_start"],
+            month_end=range_config["month_end"],
+        )
 
         if self._page:
             self._page.update()
