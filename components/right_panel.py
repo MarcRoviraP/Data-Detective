@@ -600,11 +600,16 @@ class RightPanel(ft.Container):
              # Si es un DataFrame (parquet)
             import pandas as pd
             if isinstance(traffic_data, pd.DataFrame):
-                self.traffic_data_df = traffic_data
+                object.__setattr__(self, 'traffic_data_df', traffic_data)
+                traffic_coords_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                            "data", "trafico_valencia_coords.parquet")
+                if os.path.exists(traffic_coords_path):
+                    object.__setattr__(self, 'traffic_coords_df', pd.read_parquet(traffic_coords_path, engine='pyarrow'))
+                else:
+                    object.__setattr__(self, 'traffic_coords_df', None)
             else:
-                self.traffic_data = traffic_data.get('traffic_data', {})
-                self.traffic_stations_info = traffic_data.get(
-                    'traffic_stations_info', {})
+                object.__setattr__(self, 'traffic_data', traffic_data.get('traffic_data', {}))
+                object.__setattr__(self, 'traffic_stations_info', traffic_data.get('traffic_stations_info', {}))
 
         # Marcar como cargado
         self.data_loaded = True
@@ -923,16 +928,19 @@ class RightPanel(ft.Container):
     def update_historical_traffic_markers(self):
         """Actualiza los marcadores de tráfico usando datos históricos del parquet."""
         print("\n🚗 update_historical_traffic_markers llamado")
+        import pandas as pd
         
         if not hasattr(self, 'traffic_data_df') or self.traffic_data_df is None:
             print("  ⚠️ No hay datos de tráfico históricos cargados")
             return
+        if not hasattr(self, 'traffic_coords_df') or self.traffic_coords_df is None:
+            print("  ⚠️ No hay datos de coordenadas de tráfico cargados")
+            return
         
-        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
-        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+        month, year = self.period_picker.value
         
-        if not month or not year or not hasattr(self, 'traffic_data_df'):
-            print("  ⚠️ No hay datos de tráfico o fecha seleccionada")
+        if not month or not year:
+            print("  ⚠️ No hay fecha seleccionada")
             return
 
         # Filtrar por fecha (YYYY-MM)
@@ -944,47 +952,60 @@ class RightPanel(ft.Container):
 
         self.traffic_markers = []
         
-        # Obtener estaciones en tiempo real para intentar matching de coordenadas
-        try:
-            from utils.RealTimeTrafficValencia import get_traffic_data
-            rt_stations = get_traffic_data()
-            desc_to_coords = {s.denominacion.upper(): (s.geo_point_2d['lat'], s.geo_point_2d['lon']) 
-                             for s in rt_stations if s.geo_point_2d}
-        except Exception as e:
-            print(f"⚠️ Error al obtener estaciones realtime para matching: {e}")
-            desc_to_coords = {}
+        # Guardar en un dict para acceso rapido
+        coords_dict = {}
+        for _, row in self.traffic_coords_df.iterrows():
+            coords_dict[row['ATA']] = {
+                'lat': row['LAT'],
+                'lon': row['LON']
+            }
 
         for _, row in df_filtered.iterrows():
             ata_id = row['ATA']
             desc = row['DESCRIPCION']
             imd = row['IMD']
             
-            # Intentar matching por descripción (fuzzy o exacto)
-            coords = desc_to_coords.get(desc.upper())
+            coord = coords_dict.get(ata_id)
+            if not coord or pd.isna(coord['lat']) or pd.isna(coord['lon']):
+                continue
             
-            if coords:
-                lat, lon = coords
-                color = ft.Colors.RED
-                
-                marker_data = {
-                    "tipo": "trafico_historico",
-                    "titulo": desc,
-                    "info": {
-                        "ID ATA": ata_id,
-                        "Ubicación": desc,
-                        "IMD (Intensidad)": f"{imd:.1f} veh/día",
-                        "Período": date_str
-                    }
+            lat = coord['lat']
+            lon = coord['lon']
+            
+            # Asignar color dinámico según intensidad (IMD)
+            imd_val = int(imd)
+            if imd_val < 5000:
+                color = ft.Colors.GREEN_400
+            elif imd_val < 15000:
+                color = ft.Colors.LIME_500
+            elif imd_val < 30000:
+                color = ft.Colors.AMBER_500
+            elif imd_val < 50000:
+                color = ft.Colors.ORANGE_500
+            elif imd_val < 80000:
+                color = ft.Colors.RED_500
+            else:
+                color = ft.Colors.RED_900
+            
+            marker_data = {
+                "tipo": "trafico_historico",
+                "titulo": desc,
+                "info": {
+                    "ID ATA": ata_id,
+                    "Ubicación": desc,
+                    "IMD (Intensidad)": f"{int(imd)} veh/día",
+                    "Período": date_str
                 }
+            }
 
-                tooltip = f"ATA {ata_id}: {desc} (IMD: {imd:.0f})"
+            tooltip = f"ATA {ata_id}: {desc} (IMD: {int(imd)})"
 
-                marker = self._create_marker(
-                    lat, lon, color, ft.icons.Icons.TRAFFIC,
-                    marker_data, tooltip,
-                    on_click=lambda e, r=row: self.on_historical_traffic_click(r)
-                )
-                self.traffic_markers.append(marker)
+            marker = self._create_marker(
+                lat, lon, color, ft.icons.Icons.TRAFFIC,
+                marker_data, tooltip,
+                on_click=lambda e, r=row: self.on_historical_traffic_click(r)
+            )
+            self.traffic_markers.append(marker)
 
         if self.marker_layer_ref.current:
             self.marker_layer_ref.current.markers = self.traffic_markers
@@ -1098,15 +1119,18 @@ class RightPanel(ft.Container):
     def on_search_click(self, e):
         """Manejador del botón de búsqueda."""
         if not self.data_loaded:
-            print("  ⚠️ Datos aún cargando, por favor espere...")
+            missing = []
+            if not hasattr(self, 'traffic_data_df') and not hasattr(self, 'traffic_data'): missing.append('Traffic Data')
+            if not hasattr(self, 'aemet_data'): missing.append('AEMET Data')
+            if not hasattr(self, 'metadata'): missing.append('Pollution Data')
+            print(f"  ⚠️ Datos aún cargando, por favor espere... Falta: {', '.join(missing)}")
             if self._page:
-                self._page.snack_bar = ft.SnackBar(ft.Text("Los datos aún se están cargando..."))
+                self._page.snack_bar = ft.SnackBar(ft.Text(f"Los datos aún se están cargando... (Falta: {', '.join(missing)})"))
                 self._page.snack_bar.open = True
                 self._page.update()
             return
 
-        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
-        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+        month, year = self.period_picker.value
         print(f"\n🔍 Búsqueda solicitada: mes={month}, año={
               year}, capa={self.current_layer}")
 

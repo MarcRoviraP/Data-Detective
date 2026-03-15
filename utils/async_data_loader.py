@@ -353,6 +353,8 @@ class AsyncDataLoader:
                 try:
                     on_complete(success)
                 except Exception as e:
+                    import traceback
+                    traceback.print_exc()
                     print(f"⚠️ Error en callback de completado: {e}")
 
         # Iniciar threads de carga
