@@ -137,21 +137,20 @@ class MapContainer(ft.Container):
         has_valid_data = False
 
         for key, value in data.get("info", {}).items():
-            # Verificar si hay datos reales
-            # Para tráfico, cualquier estado válido (0-9) es un dato real
-            if (
-                tipo == "trafico"
-                and key == "Estado"
-                and value not in ["Sin datos", "Sin información", "Desconocido"]
-            ):
-                has_valid_data = True
-            elif value and str(value) not in ["-", "None", "", "Sin datos"]:
-                has_valid_data = True
+            # Validar si el dato es útil (no None, no vacío, no placeholder)
+            val_str = str(value).strip()
+            is_valid = False
+            if value is not None and val_str not in ["-", "None", "", "Sin datos", "N/A", "nan", "Desconocido"]:
+                is_valid = True
+            
+            # Permitir estado de tráfico si es coherente
+            if tipo == "trafico" and key == "Estado actual" and val_str not in ["Sin datos", "Desconocido"]:
+                is_valid = True
 
-            # Formatear valor
-            display_value = (
-                str(value) if value and str(value) not in ["None", ""] else "Sin datos"
-            )
+            if not is_valid:
+                continue
+
+            has_valid_data = True
 
             info_items.append(
                 ft.Container(
@@ -163,16 +162,13 @@ class MapContainer(ft.Container):
                                 size=11,
                                 color=COLORS["text_gray"],
                                 weight=ft.FontWeight.BOLD,
-                                width=100,
+                                width=110,
                             ),
                             ft.Text(
-                                display_value,
+                                val_str,
                                 size=11,
-                                color=(
-                                    COLORS["text_white"]
-                                    if display_value != "Sin datos"
-                                    else COLORS["text_gray"]
-                                ),
+                                color=COLORS["text_white"],
+                                expand=True
                             ),
                         ]
                     ),
@@ -455,16 +451,21 @@ class MapContainer(ft.Container):
                         except:
                             pass
 
+                        # Construir info dinámicamente
+                        info_w = {}
+                        if clima.prec and str(clima.prec) not in ["-", "None", "nan"]:
+                            info_w["Lluvia caída"] = f"{clima.prec} mm"
+                        if clima.tmed and str(clima.tmed) not in ["-", "None", "nan"]:
+                            info_w["Temperatura"] = f"{clima.tmed}°C"
+                        if clima.hr and str(clima.hr) not in ["-", "None", "nan"]:
+                            info_w["Humedad del aire"] = f"{clima.hr}%"
+
                         marker_data = {
                             "tipo": "precipitacion",
                             "titulo": clima.estacion,
                             "icon": ft.icons.Icons.WATER_DROP,
                             "color": color,
-                            "info": {
-                                "Precipitación": f"{clima.prec} mm",
-                                "Temperatura": f"{clima.tmed}°C",
-                                "Humedad": f"{clima.hr}%",
-                            },
+                            "info": info_w,
                         }
 
                         marker = self._create_marker(
@@ -473,7 +474,7 @@ class MapContainer(ft.Container):
                             color,
                             ft.icons.Icons.WATER_DROP,
                             marker_data,
-                            tooltip=clima.estacion,
+                            tooltip=f"🌦️ {clima.estacion}\n💧 {clima.prec} mm de lluvia",
                         )
                         self.all_markers["Precipitaciones"].append(marker)
 
@@ -495,16 +496,19 @@ class MapContainer(ft.Container):
                         except:
                             pass
 
+                        # Construir info dinámicamente
+                        info_aq = {"Estación de control": estacion.direccion}
+                        if estacion.no2 and str(estacion.no2) not in ["-", "None", "nan"]:
+                            info_aq["Nivel de NO2"] = f"{estacion.no2} μg/m³"
+                        if hasattr(estacion, 'calidad_am') and estacion.calidad_am:
+                            info_aq["Estado del aire"] = estacion.calidad_am
+
                         marker_data = {
                             "tipo": "no2",
                             "titulo": estacion.direccion,
                             "icon": ft.icons.Icons.CLOUD,
                             "color": color,
-                            "info": {
-                                "NO2": f"{estacion.no2} μg/m³",
-                                "Calidad": estacion.calidad_am,
-                                "Estación": estacion.direccion,
-                            },
+                            "info": info_aq,
                         }
 
                         marker = self._create_marker(
@@ -513,7 +517,7 @@ class MapContainer(ft.Container):
                             color,
                             ft.icons.Icons.CLOUD,
                             marker_data,
-                            tooltip=estacion.direccion,
+                            tooltip=f"🍀 {estacion.direccion}\n💨 Aire (NO2): {estacion.no2} μg/m³",
                         )
                         self.all_markers["Contaminación (NO2)"].append(marker)
 
@@ -527,25 +531,28 @@ class MapContainer(ft.Container):
 
                     if lat and lon:
 
+                        # Construir info dinámicamente
+                        info_aq2 = {"Estación de control": estacion.direccion}
+                        if hasattr(estacion, 'o3') and estacion.o3 and str(estacion.o3) not in ["-", "None", "nan"]:
+                            info_aq2["Gas Ozono (O3)"] = f"{estacion.o3} μg/m³"
+                        if hasattr(estacion, 'pm10') and estacion.pm10 and str(estacion.pm10) not in ["-", "None", "nan"]:
+                            info_aq2["Partículas (PM10)"] = f"{estacion.pm10} μg/m³"
+
                         marker_data = {
                             "tipo": "o3_pm10",
                             "titulo": estacion.direccion,
-                            "icon": ft.icons.Icons.BLUR_ON,
+                            "icon": ft.icons.Icons.GRAIN,
                             "color": COLORS["pollution"],
-                            "info": {
-                                "O3": f"{estacion.o3} μg/m³",
-                                "PM10": f"{estacion.pm10} μg/m³",
-                                "Estación": estacion.direccion,
-                            },
+                            "info": info_aq2,
                         }
 
                         marker = self._create_marker(
                             lat,
                             lon,
                             COLORS["pollution"],
-                            ft.icons.Icons.BLUR_ON,
+                            ft.icons.Icons.GRAIN,
                             marker_data,
-                            tooltip=estacion.direccion,
+                            tooltip=f"🌫️ {estacion.direccion}\n📊 Pulsa para ver partículas en suspensión",
                         )
                         self.all_markers["Contaminación (O3, PM10)"].append(marker)
 
@@ -574,15 +581,15 @@ class MapContainer(ft.Container):
                         color = color_map.get(color_sugerido, COLORS["traffic"])
 
                         # Construir info solo con datos disponibles
-                        info = {"Estado": estado_desc, "Código": f"{estacion.estado}"}
+                        info = {"Estado actual": estado_desc, "Código punto": f"{estacion.estado}"}
 
                         # Solo agregar campos si tienen datos reales
                         if estacion.velocidad and estacion.velocidad != "-":
-                            info["Velocidad"] = f"{estacion.velocidad} km/h"
+                            info["Velocidad media"] = f"{estacion.velocidad} km/h"
                         if estacion.intensidad and estacion.intensidad != "-":
-                            info["Intensidad"] = f"{estacion.intensidad} veh/h"
+                            info["Volumen tráfico"] = f"{estacion.intensidad} veh/h"
                         if estacion.ocupacion and estacion.ocupacion != "-":
-                            info["Ocupación"] = f"{estacion.ocupacion}%"
+                            info["Ocupación calzada"] = f"{estacion.ocupacion}%"
 
                         marker_data = {
                             "tipo": "trafico",
@@ -598,7 +605,7 @@ class MapContainer(ft.Container):
                             color,
                             ft.icons.Icons.TRAFFIC,
                             marker_data,
-                            tooltip=estacion.denominacion,
+                            tooltip=f"🚗 {estacion.denominacion}\n📈 Estado: {estado_desc}",
                         )
                         self.all_markers["Flujo Tráfico DGT"].append(marker)
 

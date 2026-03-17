@@ -731,23 +731,33 @@ class RightPanel(ft.Container):
                         color = COLORS["traffic"]
 
                 # Crear datos del marcador con información detallada
+                # Construir info solo con datos válidos
+                info_p = {
+                    "Estación": sensor['nombre'],
+                    "Código": sensor['cod'],
+                    "Período": f"{month}/{year}"
+                }
+                
+                # Añadir métricas solo si existen y son válidas
+                for label, key in [("NO2 Promedio", 'no2_avg'), ("O3 Promedio", 'o3_avg'), ("PM10 Promedio", 'pm10_avg')]:
+                    val = sensor.get(key)
+                    if val is not None and str(val).lower() not in ["none", "nan", "n/a", "-"]:
+                        try:
+                            info_p[label] = f"{float(val):.1f} μg/m³"
+                        except:
+                            pass
+
                 marker_data = {
                     "tipo": "contaminacion_historica",
                     "titulo": sensor['nombre'],
                     "icon": ft.icons.Icons.CLOUD,
                     "color": color,
-                    "info": {
-                        "Estación": sensor['nombre'],
-                        "Código": sensor['cod'],
-                        "NO2 Promedio": f"{sensor['no2_avg']:.1f} μg/m³" if sensor['no2_avg'] else "N/A",
-                        "O3 Promedio": f"{sensor['o3_avg']:.1f} μg/m³" if sensor['o3_avg'] else "N/A",
-                        "PM10 Promedio": f"{sensor['pm10_avg']:.1f} μg/m³" if sensor['pm10_avg'] else "N/A",
-                        "Período": f"{month}/{year}"
-                    }
+                    "info": info_p
                 }
 
-                # Crear tooltip simplificado (solo nombre)
-                tooltip_text = sensor['nombre']
+                # Crear tooltip simplificado y amigable
+                no2_text = f"{sensor['no2_avg']:.1f} μg/m³" if sensor['no2_avg'] else "N/A"
+                tooltip_text = f"🍀 Estación: {sensor['nombre']}\n💨 Aire (NO2): {no2_text}"
 
                 # Crear marcador
                 marker = self._create_marker(
@@ -850,18 +860,40 @@ class RightPanel(ft.Container):
             date_key_long) or station_data.get(date_key_short)
 
         if weather:
-            tm_mes = weather.get('tm_mes', 'N/A')
-            p_mes = weather.get('p_mes', 'N/A')
-            tm_max = weather.get('tm_max', 'N/A')
-            tm_min = weather.get('tm_min', 'N/A')
+            tm_mes = weather.get('tm_mes')
+            p_mes = weather.get('p_mes')
+            tm_max = weather.get('tm_max')
+            tm_min = weather.get('tm_min')
 
-            self.weather_container.content.controls[0].value = f"RESUMEN CLIMATOLÓGICO: {
-                station_name}"
-            self.weather_info_text.value = (
-                f"🌡️ Temp. Media: {tm_mes}°C\n"
-                f"📈 Temp. Máx: {tm_max}°C | 📉 Mín: {tm_min}°C\n"
-                f"🌧️ Precipitación: {p_mes} mm"
-            )
+            self.weather_container.content.controls[0].value = "🌦️ RESUMEN DEL CLIMA"
+            
+            lines = [f"📍 Estación: {station_name}\n"]
+            
+            # Temperatura media y clasificación
+            if tm_mes and str(tm_mes) not in ["N/A", "None", "nan"]:
+                try:
+                    temp = float(tm_mes)
+                    if temp < 10: clado_temp = "❄️ Frío"
+                    elif temp < 20: clado_temp = "⛅ Templado"
+                    elif temp < 30: clado_temp = "☀️ Cálido"
+                    else: clado_temp = "🔥 Muy caluroso"
+                    lines.append(f"🌡️ Temperatura media: {tm_mes}°C ({clado_temp})")
+                except:
+                    lines.append(f"🌡️ Temperatura media: {tm_mes}°C")
+            
+            # Máximas y mínimas
+            t_max_valid = tm_max and str(tm_max) not in ["N/A", "None", "nan"]
+            t_min_valid = tm_min and str(tm_min) not in ["N/A", "None", "nan"]
+            if t_max_valid or t_min_valid:
+                max_str = f"{tm_max}°C" if t_max_valid else "?"
+                min_str = f"{tm_min}°C" if t_min_valid else "?"
+                lines.append(f"📈 Máxima: {max_str} | 📉 Mínima: {min_str}")
+            
+            # Lluvia
+            if p_mes and str(p_mes) not in ["N/A", "None", "nan"]:
+                lines.append(f"🌧️ Lluvia total: {p_mes} mm acumulados")
+
+            self.weather_info_text.value = "\n".join(lines)
             self.weather_container.visible = True
         else:
             self.weather_container.visible = False
@@ -891,7 +923,7 @@ class RightPanel(ft.Container):
                 "titulo": info['nombre']
             }
 
-            tooltip = f"Estación: {info['nombre']}"
+            tooltip = f"📍 {info['nombre']}\n🚗 Pulsa para ver datos de tráfico"
             if indicativo == self.selected_traffic_station:
                 tooltip += " (Seleccionada)"
 
@@ -946,23 +978,25 @@ class RightPanel(ft.Container):
         # Filtrar por fecha (YYYY-MM)
         month_int = int(month)
         date_str = f"{year}-{month_int:02}"
-        
-        df_filtered = self.traffic_data_df[self.traffic_data_df['FECHA'] == date_str]
-        print(f"  🔍 Registros encontrados para {date_str}: {len(df_filtered)}")
+
+        df = self.traffic_data_df.copy()
+        df['FECHA'] = pd.to_datetime(df['FECHA'])
+        df_filtered = df[df['FECHA'] == date_str]
+        print(f"  🔍 Registros encontrados para {date_str}: {df_filtered.shape}")
 
         self.traffic_markers = []
         
-        # Guardar en un dict para acceso rapido
+        # Guardar en un dict para acceso rapido (ATA -> {lat, lon, desc})
         coords_dict = {}
-        for _, row in self.traffic_coords_df.iterrows():
-            coords_dict[row['ATA']] = {
-                'lat': row['LAT'],
-                'lon': row['LON']
+        for _, row_c in self.traffic_coords_df.iterrows():
+            coords_dict[row_c['ATA']] = {
+                'lat': row_c['LAT'],
+                'lon': row_c['LON'],
+                'desc': row_c['DESCRIPCION']
             }
 
         for _, row in df_filtered.iterrows():
             ata_id = row['ATA']
-            desc = row['DESCRIPCION']
             imd = row['IMD']
             
             coord = coords_dict.get(ata_id)
@@ -971,6 +1005,7 @@ class RightPanel(ft.Container):
             
             lat = coord['lat']
             lon = coord['lon']
+            desc = coord.get('desc', f"ATA {ata_id}")
             
             # Asignar color dinámico según intensidad (IMD)
             imd_val = int(imd)
@@ -998,12 +1033,12 @@ class RightPanel(ft.Container):
                 }
             }
 
-            tooltip = f"ATA {ata_id}: {desc} (IMD: {int(imd)})"
+            tooltip = f"📍 {desc}\n🚗 {int(imd):,} vehículos diarios (Promedio)"
 
             marker = self._create_marker(
                 lat, lon, color, ft.icons.Icons.TRAFFIC,
                 marker_data, tooltip,
-                on_click=lambda e, r=row: self.on_historical_traffic_click(r)
+                on_click=lambda e, r=row, d=desc: self.on_historical_traffic_click(r, d)
             )
             self.traffic_markers.append(marker)
 
@@ -1013,15 +1048,35 @@ class RightPanel(ft.Container):
             if self._page:
                 self._page.update()
 
-    def on_historical_traffic_click(self, row):
-        """Manejador al hacer clic en un punto de tráfico histórico."""
-        print(f"📍 Punto de tráfico seleccionado: {row['DESCRIPCION']}")
+    def on_historical_traffic_click(self, row, desc=None):
+        """Manejador al hacer clic en un punto de tráfico histórico con info amigable."""
+        final_desc = desc if desc else "Ubicación desconocida"
+        print(f"📍 Punto de tráfico seleccionado: {final_desc}")
+        
+        # Actualizar título del contenedor para que sea dinámico
+        self.pollution_container.content.controls[0].value = "📊 ESTADÍSTICAS DE TRÁFICO"
+        
+        imd = int(row['IMD'])
+        # Clasificación amigable del nivel de tráfico
+        if imd < 10000:
+            estado = "🟢 Fluido (Poco tráfico)"
+        elif imd < 25000:
+            estado = "🟡 Moderado"
+        elif imd < 45000:
+            estado = "🟠 Denso (Mucho tráfico)"
+        else:
+            estado = "🔴 Saturado (Tráfico intenso)"
+
+        # Formatear fecha
+        fecha = row['FECHA']
+        fecha_str = f"{MONTH_NAMES[fecha.month-1]} {fecha.year}" if hasattr(fecha, 'month') else str(fecha)
         
         self.pollution_info_text.value = (
-            f"🚗 ATA: {row['ATA']}\n"
-            f"📍 {row['DESCRIPCION']}\n"
-            f"📈 IMD: {row['IMD']:.1f} veh/día\n"
-            f"📅 Fecha: {row['FECHA']}"
+            f"📍 Punto de medida:\n   {final_desc}\n\n"
+            f"🚗 Tráfico promedio:\n   {imd:,} vehículos cada día\n\n"
+            f"📈 Nivel de congestión:\n   {estado}\n\n"
+            f"📅 Mes consultado: {fecha_str}\n"
+            f"🆔 Identificador: {row['ATA']}"
         )
         self.pollution_container.visible = True
         
@@ -1045,7 +1100,7 @@ class RightPanel(ft.Container):
                 "titulo": info['nombre']
             }
 
-            tooltip = f"Estación: {info['nombre']}"
+            tooltip = f"🌦️ Estación: {info['nombre']}\n📍 Toca para ver datos del clima"
             if indicativo == self.selected_weather_station:
                 tooltip += " (Seleccionada)"
 
@@ -1095,14 +1150,38 @@ class RightPanel(ft.Container):
         o3 = sensor.get('o3_avg')
         pm10 = sensor.get('pm10_avg')
 
+        # Asegurar que el título sea correcto para contaminación
+        self.pollution_container.content.controls[0].value = "🍀 CALIDAD DEL AIRE"
+
+        # Clasificación amigable de NO2
+        if no2:
+            if no2 < 20: estado_no2 = "🟢 Excelente"
+            elif no2 < 40: estado_no2 = "🟡 Bueno"
+            elif no2 < 100: estado_no2 = "🟠 Regular"
+            else: estado_no2 = "🔴 Malo (Mucha contaminación)"
+        else:
+            estado_no2 = "Desconocido"
+
         info_text = (
-            f"📍 Estación: {sensor['nombre']}\n"
-            f"💨 NO2: {no2:.1f} μg/m³\n" if no2 else "💨 NO2: N/A\n"
+            f"📍 Estación de control:\n   {sensor['nombre']}\n\n"
+            f"💨 Calidad del aire:\n   {estado_no2}\n\n"
         )
-        if o3:
-            info_text += f"🌬️ O3: {o3:.1f} μg/m³\n"
-        if pm10:
-            info_text += f"🌑 PM10: {pm10:.1f} μg/m³\n"
+        
+        has_metrics = False
+        metrics_block = "📊 Mediciones promedio:\n"
+        
+        if no2 and str(no2) not in ["None", "nan", "N/A"]:
+            metrics_block += f"   • Dióxido de Nitrógeno: {no2:.1f} μg/m³\n"
+            has_metrics = True
+        if o3 and str(o3) not in ["None", "nan", "N/A"]:
+            metrics_block += f"   • Ozono (O3): {o3:.1f} μg/m³\n"
+            has_metrics = True
+        if pm10 and str(pm10) not in ["None", "nan", "N/A"]:
+            metrics_block += f"   • Partículas (PM10): {pm10:.1f} μg/m³\n"
+            has_metrics = True
+            
+        if has_metrics:
+            info_text += metrics_block
 
         self.pollution_info_text.value = info_text
         self.pollution_container.visible = True
