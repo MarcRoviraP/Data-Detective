@@ -14,7 +14,7 @@ import flet_map as mapa
 from config.map_styles import MAP_STYLES
 from utils.async_data_loader import AsyncDataLoader
 
-
+import pandas as pd
 MONTH_NAMES = [
     "Ene", "Feb", "Mar", "Abr", "May", "Jun",
     "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
@@ -366,6 +366,7 @@ class RightPanel(ft.Container):
         self.traffic_data = {}
         self.traffic_stations_info = {}
         self.traffic_markers = []
+        self.selected_traffic_station = None  # Estación seleccionada en tráfico
         # self.traffic_data_df será inicializado en on_data_loaded si hay parquet
         
         # Estado de carga
@@ -393,6 +394,20 @@ class RightPanel(ft.Container):
                 ft.Text("DETALLE DE CALIDAD DEL AIRE", size=14,
                         weight=ft.FontWeight.BOLD),
                 self.pollution_info_text
+            ]),
+            padding=10,
+            bgcolor="#161b22",
+            border_radius=10,
+            visible=False
+        )
+
+        self.traffic_info_text = ft.Text(
+            "", size=12, color=ft.Colors.ORANGE_400)
+        self.traffic_container = ft.Container(
+            content=ft.Column([
+                ft.Text("DETALLE DE TRÁFICO HISTÓRICO", size=14,
+                        weight=ft.FontWeight.BOLD),
+                self.traffic_info_text
             ]),
             padding=10,
             bgcolor="#161b22",
@@ -461,9 +476,10 @@ class RightPanel(ft.Container):
                         alignment=ft.MainAxisAlignment.START,
                     ),
 
-                    # Resumen AEMET
+                    # Resumen AEMET / Contaminación / Tráfico
                     self.weather_container,
                     self.pollution_container,
+                    self.traffic_container,
                     # Mini mapa para mostrar la ubicación del sensor seleccionado
                     ft.Text("Ubicación de Sensores", size=14,
                             weight=ft.FontWeight.BOLD),
@@ -519,14 +535,19 @@ class RightPanel(ft.Container):
         # Resetear visibilidad de contenedores al cambiar capa
         self.weather_container.visible = False
         self.pollution_container.visible = False
+        self.traffic_container.visible = False
 
         # Actualizar marcadores según la capa
         if self.current_layer == "pollution":
             self.update_pollution_markers()
         elif self.current_layer == "rain":
             self.update_weather_markers()
+        elif self.current_layer == "traffic":
+            if hasattr(self, 'traffic_data_df'):
+                self.update_historical_traffic_markers()
+            else:
+                self.update_traffic_markers()
 
-        # self.update_weather_summary()
         self._page.update()
 
     def _create_mini_map(self):
@@ -582,42 +603,62 @@ class RightPanel(ft.Container):
 
     def on_data_loaded(self):
         """Callback cuando los datos terminan de cargar."""
+        import traceback as _tb
+    
+        
         # Obtener datos cargados
         pollution_data = self.data_loader.get_pollution_data()
         aemet_data = self.data_loader.get_aemet_data()
         traffic_data = self.data_loader.get_traffic_data()
 
-        if pollution_data is not None:
-            self.metadata = pollution_data.get('metadata', {})
-            self.year_cache = pollution_data.get('year_cache', {})
+        print(f"  [on_data_loaded] tipo traffic_data: {type(traffic_data).__name__}")
 
-        if aemet_data is not None:
-            self.aemet_data = aemet_data.get('aemet_data', {})
-            self.weather_stations_info = aemet_data.get(
-                'weather_stations_info', {})
-            
-        if traffic_data is not None:
-             # Si es un DataFrame (parquet)
-            import pandas as pd
+        try:
+            if pollution_data is not None:
+                self.metadata = pollution_data.get('metadata', {})
+                self.year_cache = pollution_data.get('year_cache', {})
+        except Exception as e:
+            print(f"❌ Error cargando pollution_data: {e}"); _tb.print_exc()
+
+        try:
+            if aemet_data is not None:
+                self.aemet_data = aemet_data.get('aemet_data', {})
+                self.weather_stations_info = aemet_data.get(
+                    'weather_stations_info', {})
+        except Exception as e:
+            print(f"❌ Error cargando aemet_data: {e}"); _tb.print_exc()
+
+        # Comprobar tráfico: puede ser DataFrame o dict; no usar bool() sobre DataFrame
+        try:
             if isinstance(traffic_data, pd.DataFrame):
                 self.traffic_data_df = traffic_data
-            else:
+                print(f"  ✅ traffic_data_df asignado: {len(self.traffic_data_df)} filas")
+            elif traffic_data is not None:
                 self.traffic_data = traffic_data.get('traffic_data', {})
                 self.traffic_stations_info = traffic_data.get(
                     'traffic_stations_info', {})
+        except Exception as e:
+            print(f"❌ Error cargando traffic_data: {e}"); _tb.print_exc()
 
         # Marcar como cargado
         self.data_loaded = True
 
         # Actualizar UI con datos
-        if self.current_layer == "pollution":
-            self.update_pollution_markers()
-            self.update_weather_summary()
+        try:
+            if self.current_layer == "pollution":
+                self.update_pollution_markers()
+                self.update_weather_summary()
+        except Exception as e:
+            print(f"❌ Error actualizando UI: {e}"); _tb.print_exc()
 
-        if self._page:
-            self._page.update()
+        try:
+            if self._page:
+                self._page.update()
+        except Exception as e:
+            print(f"❌ Error en page.update(): {e}"); _tb.print_exc()
 
         print("✅ UI actualizada con datos cargados")
+
 
     def load_historical_pollution_data(self):
         """Carga metadata de datos históricos (JSON fragmentado por año)."""
@@ -771,8 +812,11 @@ class RightPanel(ft.Container):
 
     def _create_marker(self, lat, lon, color, icon, marker_data=None, tooltip_text=None, on_click=None):
         """Crea un marcador para el mini-mapa."""
-        # Color de fondo con transparencia
-        bg_color = color + "33"
+        # Color de fondo con transparencia (solo si es un hex string)
+        if isinstance(color, str) and color.startswith("#"):
+            bg_color = color + "33"
+        else:
+            bg_color = "#33333333"  # fallback semitransparente
 
         # Usar tooltip personalizado o por defecto
         if tooltip_text is None and marker_data:
@@ -878,7 +922,7 @@ class RightPanel(ft.Container):
             if not info['lat'] or not info['lon']:
                 continue
 
-            color = ft.Colors.BLUE if indicativo == self.selected_traffic_station else ft.Colors.BLUE_200
+            color = "#1E88E5" if indicativo == self.selected_traffic_station else "#90CAF9"
 
             marker_data = {
                 "tipo": "trafico_historico",
@@ -898,7 +942,7 @@ class RightPanel(ft.Container):
                 border_radius=15,
                 alignment=ft.alignment.Alignment(0, 0),
                 content=ft.Icon(
-                    ft.icons.Icons.GRAIN,
+                    ft.icons.Icons.TRAFFIC,
                     color=color,
                     size=18
                 ),
@@ -928,19 +972,34 @@ class RightPanel(ft.Container):
             print("  ⚠️ No hay datos de tráfico históricos cargados")
             return
         
-        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
-        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
+        # Bug fix: leer mes/año desde el period_picker (los dropdowns ya no existen)
+        month, year = self.period_picker.value
         
-        if not month or not year or not hasattr(self, 'traffic_data_df'):
-            print("  ⚠️ No hay datos de tráfico o fecha seleccionada")
+        if not month or not year:
+            print("  ⚠️ No hay fecha seleccionada")
             return
 
         # Filtrar por fecha (YYYY-MM)
+        # Convertir columna FECHA a string por si es Period o datetime
         month_int = int(month)
         date_str = f"{year}-{month_int:02}"
         
-        df_filtered = self.traffic_data_df[self.traffic_data_df['FECHA'] == date_str]
+        try:
+            fecha_col_str = self.traffic_data_df['FECHA'].astype(str)
+        except Exception:
+            fecha_col_str = self.traffic_data_df['FECHA']
+        
+        df_filtered = self.traffic_data_df[fecha_col_str.str.startswith(date_str)]
         print(f"  🔍 Registros encontrados para {date_str}: {len(df_filtered)}")
+
+        if df_filtered.empty:
+            print(f"  ⚠️ No hay datos de tráfico para {date_str}")
+            # Mostrar mensaje informativo en el contenedor
+            self.traffic_info_text.value = f"Sin datos disponibles para {date_str}"
+            self.traffic_container.visible = True
+            if self._page:
+                self._page.update()
+            return
 
         self.traffic_markers = []
         
@@ -948,29 +1007,40 @@ class RightPanel(ft.Container):
         try:
             from utils.RealTimeTrafficValencia import get_traffic_data
             rt_stations = get_traffic_data()
-            desc_to_coords = {s.denominacion.upper(): (s.geo_point_2d['lat'], s.geo_point_2d['lon']) 
-                             for s in rt_stations if s.geo_point_2d}
+            desc_to_coords = {
+                s.denominacion.upper(): (s.geo_point_2d['lat'], s.geo_point_2d['lon'])
+                for s in rt_stations
+                if s.geo_point_2d and 'lat' in s.geo_point_2d and 'lon' in s.geo_point_2d
+            }
         except Exception as e:
             print(f"⚠️ Error al obtener estaciones realtime para matching: {e}")
             desc_to_coords = {}
 
+        # Bug fix: usar hex string en lugar de ft.Colors.RED para permitir concatenación "33"
+        COLOR_TRAFFIC = "#E53935"
+
         for _, row in df_filtered.iterrows():
             ata_id = row['ATA']
-            desc = row['DESCRIPCION']
-            imd = row['IMD']
+            desc = str(row['DESCRIPCION'])
+            # Proteger contra IMD nulo o NaN
+            try:
+                imd = float(row['IMD'])
+                if imd != imd:  # NaN check
+                    imd = 0.0
+            except (TypeError, ValueError):
+                imd = 0.0
             
-            # Intentar matching por descripción (fuzzy o exacto)
+            # Intentar matching por descripción (exacto, insensible a mayúsculas)
             coords = desc_to_coords.get(desc.upper())
             
             if coords:
                 lat, lon = coords
-                color = ft.Colors.RED
                 
                 marker_data = {
                     "tipo": "trafico_historico",
                     "titulo": desc,
                     "info": {
-                        "ID ATA": ata_id,
+                        "ID ATA": str(ata_id),
                         "Ubicación": desc,
                         "IMD (Intensidad)": f"{imd:.1f} veh/día",
                         "Período": date_str
@@ -980,29 +1050,38 @@ class RightPanel(ft.Container):
                 tooltip = f"ATA {ata_id}: {desc} (IMD: {imd:.0f})"
 
                 marker = self._create_marker(
-                    lat, lon, color, ft.icons.Icons.TRAFFIC,
+                    lat, lon, COLOR_TRAFFIC, ft.icons.Icons.TRAFFIC,
                     marker_data, tooltip,
-                    on_click=lambda e, r=row: self.on_historical_traffic_click(r)
+                    on_click=lambda e, r=row.to_dict(): self.on_historical_traffic_click(r)
                 )
                 self.traffic_markers.append(marker)
 
+        matched = len(self.traffic_markers)
+        total = len(df_filtered)
+        print(f"  📍 {matched}/{total} ubicaciones con coordenadas para {date_str}")
+
         if self.marker_layer_ref.current:
             self.marker_layer_ref.current.markers = self.traffic_markers
-            print(f"✅ {len(self.traffic_markers)} marcadores históricos de tráfico agregados")
+            print(f"✅ {matched} marcadores históricos de tráfico agregados")
             if self._page:
                 self._page.update()
 
     def on_historical_traffic_click(self, row):
         """Manejador al hacer clic en un punto de tráfico histórico."""
-        print(f"📍 Punto de tráfico seleccionado: {row['DESCRIPCION']}")
+        # row puede ser un dict (si venía de row.to_dict()) o una pandas Series
+        desc = row['DESCRIPCION']
+        ata = row['ATA']
+        imd = row['IMD']
+        fecha = row['FECHA']
+        print(f"📍 Punto de tráfico seleccionado: {desc}")
         
-        self.pollution_info_text.value = (
-            f"🚗 ATA: {row['ATA']}\n"
-            f"📍 {row['DESCRIPCION']}\n"
-            f"📈 IMD: {row['IMD']:.1f} veh/día\n"
-            f"📅 Fecha: {row['FECHA']}"
+        self.traffic_info_text.value = (
+            f"🚗 ATA: {ata}\n"
+            f"📍 {desc}\n"
+            f"📈 IMD: {float(imd):.1f} veh/día\n"
+            f"📅 Fecha: {fecha}"
         )
-        self.pollution_container.visible = True
+        self.traffic_container.visible = True
         
         if self._page:
             self._page.update()
@@ -1016,7 +1095,7 @@ class RightPanel(ft.Container):
             if not info['lat'] or not info['lon']:
                 continue
 
-            color = ft.Colors.BLUE if indicativo == self.selected_weather_station else ft.Colors.BLUE_200
+            color = "#1565C0" if indicativo == self.selected_weather_station else "#90CAF9"
 
             marker_data = {
                 "tipo": "clima_historico",
@@ -1074,10 +1153,8 @@ class RightPanel(ft.Container):
         o3 = sensor.get('o3_avg')
         pm10 = sensor.get('pm10_avg')
 
-        info_text = (
-            f"📍 Estación: {sensor['nombre']}\n"
-            f"💨 NO2: {no2:.1f} μg/m³\n" if no2 else "💨 NO2: N/A\n"
-        )
+        info_text = f"📍 Estación: {sensor['nombre']}\n"
+        info_text += f"💨 NO2: {no2:.1f} μg/m³\n" if no2 else "💨 NO2: N/A\n"
         if o3:
             info_text += f"🌬️ O3: {o3:.1f} μg/m³\n"
         if pm10:
@@ -1097,18 +1174,10 @@ class RightPanel(ft.Container):
 
     def on_search_click(self, e):
         """Manejador del botón de búsqueda."""
-        if not self.data_loaded:
-            print("  ⚠️ Datos aún cargando, por favor espere...")
-            if self._page:
-                self._page.snack_bar = ft.SnackBar(ft.Text("Los datos aún se están cargando..."))
-                self._page.snack_bar.open = True
-                self._page.update()
-            return
+        
 
-        month = self.month_dropdown_ref.current.value if self.month_dropdown_ref.current else None
-        year = self.year_dropdown_ref.current.value if self.year_dropdown_ref.current else None
-        print(f"\n🔍 Búsqueda solicitada: mes={month}, año={
-              year}, capa={self.current_layer}")
+        month, year = self.period_picker.value
+        print(f"\n🔍 Búsqueda solicitada: mes={month}, año={year}, capa={self.current_layer}")
 
         # Actualizar resumen climatológico independientemente de la capa
         # self.update_weather_summary()
@@ -1136,16 +1205,14 @@ class RightPanel(ft.Container):
     def on_date_change(self, e):
         """Manejador de cambio de fecha."""
         month, year = self.period_picker.value
-        print(
-            f"\n📅 on_date_change llamado: mes={month}, año={year}, capa={self.current_layer}")
+        print(f"\n📅 on_date_change llamado: mes={month}, año={year}, capa={self.current_layer}")
 
         # Auto-actualizar según la capa activa
         if self.current_layer == "pollution":
             print("  → Actualizando marcadores de contaminación...")
             self.update_pollution_markers()
         else:
-            print(
-                f"  ⚠️ Capa '{self.current_layer}' no soporta auto-actualización aún")
+            print(f"  ⚠️ Capa '{self.current_layer}' no soporta auto-actualización aún")
 
     def update_date_ranges_for_layer(self, layer: str):
         """Actualiza los rangos de fechas disponibles según la capa seleccionada."""
