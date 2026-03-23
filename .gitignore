@@ -4,3 +4,4 @@ __pycache__/*
 *.pyc
 .vscode/shortcuts.json
 components/__pycache__/*
+exports/*

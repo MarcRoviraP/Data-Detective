@@ -1,0 +1,118 @@
+2026-03-17 13:13:46,842 - INFO - --- Procesando: imds 2016.ods ---
+2026-03-17 13:13:46,858 - INFO - Hojas encontradas: ['2016_IMD_X_TRAMO_(1)']
+2026-03-17 13:13:46,861 - INFO -   [Formato Antiguo] Meses en columnas -> Hoja: 2016_IMD_X_TRAMO_(1)
+2026-03-17 13:13:46,875 - INFO - --- Procesando: imds 2017.ods ---
+2026-03-17 13:13:46,887 - INFO - Hojas encontradas: ['2017_IMD_X_TRAMO_(1)']
+2026-03-17 13:13:46,888 - INFO -   [Formato Antiguo] Meses en columnas -> Hoja: 2017_IMD_X_TRAMO_(1)
+2026-03-17 13:13:46,899 - INFO - --- Procesando: imds 2018.ods ---
+2026-03-17 13:13:46,911 - INFO - Hojas encontradas: ['2018_IMD_X_TRAMO_(3)']
+2026-03-17 13:13:46,912 - INFO -   [Formato Antiguo] Meses en columnas -> Hoja: 2018_IMD_X_TRAMO_(3)
+2026-03-17 13:13:46,926 - INFO - --- Procesando: imds 2019.ods ---
+2026-03-17 13:13:46,980 - INFO - Hojas encontradas: ['IMD ENERO 2019', 'IMD FEBRERO 2019', 'IMD MARZO 2019', 'IMD ABRIL 2019', 'IMD MAYO 2019', 'IMD JUNIO 2019', 'IMD JULIO 2019', 'IMD AGOSTO 2019', 'IMD SEPTIEMBRE 2019', 'IMD OCTUBRE 2019', 'IMD NOVIEMBRE 2019', 'IMD DICIEMBRE 2019']
+2026-03-17 13:13:46,980 - INFO -   [Formato Nuevo] Procesando hoja: IMD ENERO 2019 -> 2019-01
+2026-03-17 13:13:46,982 - INFO -   [Formato Nuevo] Procesando hoja: IMD FEBRERO 2019 -> 2019-02
+2026-03-17 13:13:46,984 - INFO -   [Formato Nuevo] Procesando hoja: IMD MARZO 2019 -> 2019-03
+2026-03-17 13:13:46,986 - INFO -   [Formato Nuevo] Procesando hoja: IMD ABRIL 2019 -> 2019-04
+2026-03-17 13:13:46,988 - INFO -   [Formato Nuevo] Procesando hoja: IMD MAYO 2019 -> 2019-05
+2026-03-17 13:13:46,990 - INFO -   [Formato Nuevo] Procesando hoja: IMD JUNIO 2019 -> 2019-06
+2026-03-17 13:13:46,992 - INFO -   [Formato Nuevo] Procesando hoja: IMD JULIO 2019 -> 2019-07
+2026-03-17 13:13:46,993 - INFO -   [Formato Nuevo] Procesando hoja: IMD AGOSTO 2019 -> 2019-08
+2026-03-17 13:13:46,995 - INFO -   [Formato Nuevo] Procesando hoja: IMD SEPTIEMBRE 2019 -> 2019-09
+2026-03-17 13:13:46,998 - INFO -   [Formato Nuevo] Procesando hoja: IMD OCTUBRE 2019 -> 2019-10
+2026-03-17 13:13:47,000 - INFO -   [Formato Nuevo] Procesando hoja: IMD NOVIEMBRE 2019 -> 2019-11
+2026-03-17 13:13:47,002 - INFO -   [Formato Nuevo] Procesando hoja: IMD DICIEMBRE 2019 -> 2019-12
+2026-03-17 13:13:47,004 - INFO - --- Procesando: imds 2020.ods ---
+2026-03-17 13:13:47,057 - INFO - Hojas encontradas: ['Descripción', 'IMD ENERO 2020', 'IMD FEBRERO 2020', 'IMD MARZO 2020', 'IMD ABRIL 2020', 'IMD MAYO 2020', 'IMD JUNIO 2020', 'IMD JULIO 2020', 'IMD AGOSTO 2020', 'IMD SEPTIEMBRE 2020', 'IMD OCTUBRE 2020', 'IMD NOVIEMBRE 2020', 'IMD DICIEMBRE 2020']
+2026-03-17 13:13:47,057 - INFO -   [Formato Nuevo] Procesando hoja: IMD ENERO 2020 -> 2020-01
+2026-03-17 13:13:47,059 - INFO -   [Formato Nuevo] Procesando hoja: IMD FEBRERO 2020 -> 2020-02
+2026-03-17 13:13:47,061 - INFO -   [Formato Nuevo] Procesando hoja: IMD MARZO 2020 -> 2020-03
+2026-03-17 13:13:47,063 - INFO -   [Formato Nuevo] Procesando hoja: IMD ABRIL 2020 -> 2020-04
+2026-03-17 13:13:47,065 - INFO -   [Formato Nuevo] Procesando hoja: IMD MAYO 2020 -> 2020-05
+2026-03-17 13:13:47,066 - INFO -   [Formato Nuevo] Procesando hoja: IMD JUNIO 2020 -> 2020-06
+2026-03-17 13:13:47,069 - INFO -   [Formato Nuevo] Procesando hoja: IMD JULIO 2020 -> 2020-07
+2026-03-17 13:13:47,071 - INFO -   [Formato Nuevo] Procesando hoja: IMD AGOSTO 2020 -> 2020-08
+2026-03-17 13:13:47,073 - INFO -   [Formato Nuevo] Procesando hoja: IMD SEPTIEMBRE 2020 -> 2020-09
+2026-03-17 13:13:47,076 - INFO -   [Formato Nuevo] Procesando hoja: IMD OCTUBRE 2020 -> 2020-10
+2026-03-17 13:13:47,078 - INFO -   [Formato Nuevo] Procesando hoja: IMD NOVIEMBRE 2020 -> 2020-11
+2026-03-17 13:13:47,080 - INFO -   [Formato Nuevo] Procesando hoja: IMD DICIEMBRE 2020 -> 2020-12
+2026-03-17 13:13:47,081 - INFO - --- Procesando: imds 2021.ods ---
+2026-03-17 13:13:47,133 - INFO - Hojas encontradas: ['IMD ENERO 2021', 'IMD FEBRERO 2021', 'IMD MARZO 2021', 'IMD ABRIL 2021', 'IMD MAYO 2021', 'IMD JUNIO 2021', 'IMD JULIO 2021', 'IMD AGOSTO 2021', 'IMD SEPTIEMBRE 2021', 'IMD OCTUBRE 2021', 'IMD NOVIEMBRE 2021', 'IMD DICIEMBRE 2021']
+2026-03-17 13:13:47,134 - INFO -   [Formato Nuevo] Procesando hoja: IMD ENERO 2021 -> 2021-01
+2026-03-17 13:13:47,136 - INFO -   [Formato Nuevo] Procesando hoja: IMD FEBRERO 2021 -> 2021-02
+2026-03-17 13:13:47,138 - INFO -   [Formato Nuevo] Procesando hoja: IMD MARZO 2021 -> 2021-03
+2026-03-17 13:13:47,140 - INFO -   [Formato Nuevo] Procesando hoja: IMD ABRIL 2021 -> 2021-04
+2026-03-17 13:13:47,142 - INFO -   [Formato Nuevo] Procesando hoja: IMD MAYO 2021 -> 2021-05
+2026-03-17 13:13:47,143 - INFO -   [Formato Nuevo] Procesando hoja: IMD JUNIO 2021 -> 2021-06
+2026-03-17 13:13:47,145 - INFO -   [Formato Nuevo] Procesando hoja: IMD JULIO 2021 -> 2021-07
+2026-03-17 13:13:47,147 - INFO -   [Formato Nuevo] Procesando hoja: IMD AGOSTO 2021 -> 2021-08
+2026-03-17 13:13:47,150 - INFO -   [Formato Nuevo] Procesando hoja: IMD SEPTIEMBRE 2021 -> 2021-09
+2026-03-17 13:13:47,153 - INFO -   [Formato Nuevo] Procesando hoja: IMD OCTUBRE 2021 -> 2021-10
+2026-03-17 13:13:47,155 - INFO -   [Formato Nuevo] Procesando hoja: IMD NOVIEMBRE 2021 -> 2021-11
+2026-03-17 13:13:47,157 - INFO -   [Formato Nuevo] Procesando hoja: IMD DICIEMBRE 2021 -> 2021-12
+2026-03-17 13:13:47,159 - INFO - --- Procesando: imds 2022.ods ---
+2026-03-17 13:13:47,217 - INFO - Hojas encontradas: ['IMD_ENERO_2022', 'IMD_FEBRERO_2022', 'IMD_MARZO_2022', 'IMD_ABRIL_2022', 'IMD_MAYO_2022', 'IMD_JUNIO_2022', 'IMD_JULIO_2022', 'IMD_AGOSTO_2022', 'IMD_SEPTIEMBRE_2022', 'IMD_OCTUBRE_2022', 'IMD_NOVIEMBRE_2022', 'IMD_DICIEMBRE_2022']
+2026-03-17 13:13:47,217 - INFO -   [Formato Nuevo] Procesando hoja: IMD_ENERO_2022 -> 2022-01
+2026-03-17 13:13:47,219 - INFO -   [Formato Nuevo] Procesando hoja: IMD_FEBRERO_2022 -> 2022-02
+2026-03-17 13:13:47,221 - INFO -   [Formato Nuevo] Procesando hoja: IMD_MARZO_2022 -> 2022-03
+2026-03-17 13:13:47,223 - INFO -   [Formato Nuevo] Procesando hoja: IMD_ABRIL_2022 -> 2022-04
+2026-03-17 13:13:47,225 - INFO -   [Formato Nuevo] Procesando hoja: IMD_MAYO_2022 -> 2022-05
+2026-03-17 13:13:47,227 - INFO -   [Formato Nuevo] Procesando hoja: IMD_JUNIO_2022 -> 2022-06
+2026-03-17 13:13:47,229 - INFO -   [Formato Nuevo] Procesando hoja: IMD_JULIO_2022 -> 2022-07
+2026-03-17 13:13:47,231 - INFO -   [Formato Nuevo] Procesando hoja: IMD_AGOSTO_2022 -> 2022-08
+2026-03-17 13:13:47,234 - INFO -   [Formato Nuevo] Procesando hoja: IMD_SEPTIEMBRE_2022 -> 2022-09
+2026-03-17 13:13:47,237 - INFO -   [Formato Nuevo] Procesando hoja: IMD_NOVIEMBRE_2022 -> 2022-11
+2026-03-17 13:13:47,240 - INFO -   [Formato Nuevo] Procesando hoja: IMD_DICIEMBRE_2022 -> 2022-12
+2026-03-17 13:13:47,242 - INFO - --- Procesando: imds 2023.ods ---
+2026-03-17 13:13:47,299 - INFO - Hojas encontradas: ['IMDS_ENERO_2023', 'FEBRERO_2023', 'MARZO_2023', 'ABRIL_2023', 'MAYO_2023', 'JUNIO_2023', 'JULIO_2023', 'AGOSTO_2023', 'SEPTIEMBRE_2023', 'OCTUBRE_2023', 'NOVIEMBRE_2023', 'DICIEMBRE_2023']
+2026-03-17 13:13:47,300 - INFO -   [Formato Nuevo] Procesando hoja: IMDS_ENERO_2023 -> 2023-01
+2026-03-17 13:13:47,302 - INFO -   [Formato Nuevo] Procesando hoja: FEBRERO_2023 -> 2023-02
+2026-03-17 13:13:47,304 - INFO -   [Formato Nuevo] Procesando hoja: MARZO_2023 -> 2023-03
+2026-03-17 13:13:47,307 - INFO -   [Formato Nuevo] Procesando hoja: ABRIL_2023 -> 2023-04
+2026-03-17 13:13:47,309 - INFO -   [Formato Nuevo] Procesando hoja: MAYO_2023 -> 2023-05
+2026-03-17 13:13:47,311 - INFO -   [Formato Nuevo] Procesando hoja: JUNIO_2023 -> 2023-06
+2026-03-17 13:13:47,315 - INFO -   [Formato Nuevo] Procesando hoja: JULIO_2023 -> 2023-07
+2026-03-17 13:13:47,318 - INFO -   [Formato Nuevo] Procesando hoja: AGOSTO_2023 -> 2023-08
+2026-03-17 13:13:47,320 - INFO -   [Formato Nuevo] Procesando hoja: SEPTIEMBRE_2023 -> 2023-09
+2026-03-17 13:13:47,322 - INFO -   [Formato Nuevo] Procesando hoja: OCTUBRE_2023 -> 2023-10
+2026-03-17 13:13:47,325 - INFO -   [Formato Nuevo] Procesando hoja: NOVIEMBRE_2023 -> 2023-11
+2026-03-17 13:13:47,327 - INFO -   [Formato Nuevo] Procesando hoja: DICIEMBRE_2023 -> 2023-12
+2026-03-17 13:13:47,330 - INFO - --- Procesando: imds 2024.ods ---
+2026-03-17 13:13:47,390 - INFO - Hojas encontradas: ['ENERO_2024', 'FEBRERO_2024', 'MARZO_2024', 'ABRIL_2024', 'MAYO_2024', 'InformeResumenMensual', 'JUNIO_2024', 'JULIO_2024', 'AGOSTO_2024', 'SEPTIEMBRE_2024', 'OCTUBRE_2024', 'NOVIEMBRE_2024', 'DICIEMBRE_2024']
+2026-03-17 13:13:47,390 - INFO -   [Formato Nuevo] Procesando hoja: ENERO_2024 -> 2024-01
+2026-03-17 13:13:47,392 - INFO -   [Formato Nuevo] Procesando hoja: FEBRERO_2024 -> 2024-02
+2026-03-17 13:13:47,394 - INFO -   [Formato Nuevo] Procesando hoja: MARZO_2024 -> 2024-03
+2026-03-17 13:13:47,397 - INFO -   [Formato Nuevo] Procesando hoja: ABRIL_2024 -> 2024-04
+2026-03-17 13:13:47,399 - INFO -   [Formato Nuevo] Procesando hoja: MAYO_2024 -> 2024-05
+2026-03-17 13:13:47,401 - INFO -   [Formato Nuevo] Procesando hoja: JUNIO_2024 -> 2024-06
+2026-03-17 13:13:47,404 - INFO -   [Formato Nuevo] Procesando hoja: JULIO_2024 -> 2024-07
+2026-03-17 13:13:47,406 - INFO -   [Formato Nuevo] Procesando hoja: AGOSTO_2024 -> 2024-08
+2026-03-17 13:13:47,408 - INFO -   [Formato Nuevo] Procesando hoja: SEPTIEMBRE_2024 -> 2024-09
+2026-03-17 13:13:47,410 - INFO -   [Formato Nuevo] Procesando hoja: OCTUBRE_2024 -> 2024-10
+2026-03-17 13:13:47,412 - INFO -   [Formato Nuevo] Procesando hoja: NOVIEMBRE_2024 -> 2024-11
+2026-03-17 13:13:47,414 - INFO -   [Formato Nuevo] Procesando hoja: DICIEMBRE_2024 -> 2024-12
+2026-03-17 13:13:47,416 - INFO - --- Procesando: IMDs 2025.ods ---
+2026-03-17 13:13:47,470 - INFO - Hojas encontradas: ['ENERO_2025', 'FEBRERO_2025', 'MARZO_2025', 'ABRIL_2025', 'MAYO_2025', 'JUNIO_2025', 'JULIO_2025', 'AGOSTO_2025', 'SEPTIEMBRE_2025', 'OCTUBRE_2025', 'NOVIEMBRE_2025', 'DICIEMBRE_2025']
+2026-03-17 13:13:47,471 - INFO -   [Formato Nuevo] Procesando hoja: ENERO_2025 -> 2025-01
+2026-03-17 13:13:47,473 - INFO -   [Formato Nuevo] Procesando hoja: FEBRERO_2025 -> 2025-02
+2026-03-17 13:13:47,475 - INFO -   [Formato Nuevo] Procesando hoja: MARZO_2025 -> 2025-03
+2026-03-17 13:13:47,477 - INFO -   [Formato Nuevo] Procesando hoja: ABRIL_2025 -> 2025-04
+2026-03-17 13:13:47,479 - INFO -   [Formato Nuevo] Procesando hoja: MAYO_2025 -> 2025-05
+2026-03-17 13:13:47,482 - INFO -   [Formato Nuevo] Procesando hoja: JUNIO_2025 -> 2025-06
+2026-03-17 13:13:47,485 - INFO -   [Formato Nuevo] Procesando hoja: JULIO_2025 -> 2025-07
+2026-03-17 13:13:47,488 - INFO -   [Formato Nuevo] Procesando hoja: AGOSTO_2025 -> 2025-08
+2026-03-17 13:13:47,490 - INFO -   [Formato Nuevo] Procesando hoja: SEPTIEMBRE_2025 -> 2025-09
+2026-03-17 13:13:47,493 - INFO -   [Formato Nuevo] Procesando hoja: OCTUBRE_2025 -> 2025-10
+2026-03-17 13:13:47,496 - INFO -   [Formato Nuevo] Procesando hoja: NOVIEMBRE_2025 -> 2025-11
+2026-03-17 13:13:47,498 - INFO -   [Formato Nuevo] Procesando hoja: DICIEMBRE_2025 -> 2025-12
+2026-03-17 13:13:47,500 - INFO - --- Procesando: IMDs 2026.ods ---
+2026-03-17 13:13:47,506 - INFO - Hojas encontradas: ['ENERO_2026']
+2026-03-17 13:13:47,506 - INFO -   [Formato Nuevo] Procesando hoja: ENERO_2026 -> 2026-01
+2026-03-17 13:13:47,543 - INFO - Registros eliminados por ATA nulo: 19
+2026-03-17 13:13:47,545 - INFO - === RESUMEN DE CALIDAD DE DATOS ===
+2026-03-17 13:13:47,545 - INFO - Total registros finales: 58244
+2026-03-17 13:13:47,549 - INFO - Rango de FECHA: 2016-01 a 2026-01
+2026-03-17 13:13:47,549 - INFO - IMD medio: 19729.80
+2026-03-17 13:13:47,550 - INFO - IMD máximo: 123752.0
+2026-03-17 13:13:47,551 - INFO - Registros con IMD = 0: 839
+2026-03-17 13:13:47,552 - INFO - Número de meses únicos procesados: 120
+2026-03-17 13:13:47,583 - INFO - ✅ Datos guardados en: c:\Users\Marc\Desktop\delte\Data-Detective\data\trafico_valencia.parquet
