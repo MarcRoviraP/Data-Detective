@@ -15,11 +15,15 @@ from config.map_styles import MAP_STYLES
 from utils.async_data_loader import AsyncDataLoader
 import csv
 import io
+import base64
 import tkinter as tk
 from tkinter import filedialog
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('agg') # Backend no interactivo para hilos
 import pandas as pd
 import numpy as np
+import threading
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
@@ -40,6 +44,7 @@ class MonthYearPicker(ft.Row):
     o abrir un diálogo modal con cuadrícula de meses y años.
     """
 
+    
     def __init__(self, page: ft.Page,
                  initial_month: int = 1,
                  initial_year: int = 2025,
@@ -432,6 +437,27 @@ class RightPanel(ft.Container):
             visible=False
         )
 
+        # Contenedor para gráficos de Matplotlib
+        self.chart_image = ft.Image(
+            src="",
+            visible=False,
+            fit="contain",
+            height=300,
+            border_radius=10,
+        )
+        self.charts_container = ft.Container(
+            content=ft.Column([
+                ft.Text("📊 ANÁLISIS VISUAL DE DATOS", size=14,
+                        weight=ft.FontWeight.BOLD),
+                self.chart_image
+            ]),
+            padding=10,
+            bgcolor="#161b22",
+            border_radius=10,
+            visible=False,
+            margin=ft.margin.only(bottom=20)
+        )
+
         self.content = ft.Container(
             padding=10,
             content=ft.Column(
@@ -526,10 +552,11 @@ class RightPanel(ft.Container):
                         spacing=10,
                     ),
 
-                    # Resumen AEMET
+                    # Resúmenes de datos seleccionados (Clima, Calidad Aire, Tráfico)
                     self.weather_container,
                     self.pollution_container,
                     self.traffic_container,
+
                     # Mini mapa para mostrar la ubicación del sensor seleccionado
                     ft.Text("Ubicación de Sensores", size=14,
                             weight=ft.FontWeight.BOLD),
@@ -537,9 +564,11 @@ class RightPanel(ft.Container):
                     # Mapa
                     ft.Container(
                         content=self._create_mini_map(),
-                        expand=True,
-
+                        height=350,
                     ),
+                    
+                    # Gráficos (DEBAJO DEL MAPA)
+                    self.charts_container,
                 ],
                 spacing=8,
                 scroll=ft.ScrollMode.AUTO,
@@ -595,6 +624,11 @@ class RightPanel(ft.Container):
         elif self.current_layer == "traffic":
             if hasattr(self, 'traffic_data_df') and self.traffic_data_df is not None:
                 self.update_historical_traffic_markers()
+
+        # Actualizar gráficos al cambiar de capa (en hilo separado)
+        import threading
+        thread = threading.Thread(target=self._update_charts, daemon=True)
+        thread.start()
 
         self._page.update()
 
@@ -1724,6 +1758,11 @@ class RightPanel(ft.Container):
             else:
                 self.update_traffic_markers()
 
+        # Actualizar gráficos en un hilo separado para no bloquear la UI
+        import threading
+        thread = threading.Thread(target=self._update_charts, daemon=True)
+        thread.start()
+
     def on_year_change(self, e):
         """Manejador cuando cambia el año - actualiza los meses disponibles."""
         print(f"\n🔄 on_year_change llamado")
@@ -1740,7 +1779,13 @@ class RightPanel(ft.Container):
             print("  → Actualizando marcadores de contaminación...")
             self.update_pollution_markers()
         else:
-            print(f"  ⚠️ Capa '{self.current_layer}' no soporta auto-actualización aún")
+            print(f"  → Actualizando marcadores de '{self.current_layer}'...")
+            self.on_search_click(None)
+
+        # Actualizar gráficos cada vez que cambia la fecha (en hilo separado)
+        import threading
+        thread = threading.Thread(target=self._update_charts, daemon=True)
+        thread.start()
 
     def update_date_ranges_for_layer(self, layer: str):
         """Actualiza los rangos de fechas disponibles según la capa seleccionada."""
@@ -1759,3 +1804,176 @@ class RightPanel(ft.Container):
 
         if self._page:
             self._page.update()
+
+    def _get_current_data_list(self):
+        """Obtiene la lista de datos filtrados para la capa actual."""
+        try:
+            month, year = self.period_picker.value
+            if not month or not year:
+                return []
+                
+            month_int = int(month)
+            year_int = int(year)
+            
+            print(f"📊 Buscando datos para gráficos: {month_int}/{year_int} (Capa: {self.current_layer})")
+            
+            if self.current_layer == "pollution":
+                data = self.filter_sensors_by_date(month, year)
+                print(f"📊 Polución: {len(data) if data else 0} registros encontrados")
+                return data if isinstance(data, list) else []
+            
+            elif self.current_layer == "rain":
+                if hasattr(self, 'aemet_data') and isinstance(self.aemet_data, dict) and 'aemet_data' in self.aemet_data:
+                    filtered_data = []
+                    target_date = f"{year_int}-{month_int:02d}"
+                    station_data_dict = self.aemet_data['aemet_data']
+                    
+                    for indicativo, station_dates in station_data_dict.items():
+                        if isinstance(station_dates, dict) and target_date in station_dates:
+                            item = station_dates[target_date].copy()
+                            if indicativo in self.weather_stations_info:
+                                item['Estación'] = self.weather_stations_info[indicativo]['nombre']
+                            filtered_data.append(item)
+                    
+                    print(f"📊 Clima: {len(filtered_data)} registros encontrados para {target_date}")
+                    return filtered_data
+            
+            elif self.current_layer == "traffic":
+                if hasattr(self, 'traffic_data_df') and self.traffic_data_df is not None:
+                    df = self.traffic_data_df
+                    target_date = f"{year_int}-{month_int:02d}"
+                    if 'FECHA' in df.columns:
+                        mask = df['FECHA'] == target_date
+                        df_filtered = df[mask].copy()
+                        
+                        if hasattr(self, 'traffic_coords_df') and self.traffic_coords_df is not None:
+                            coords_map = self.traffic_coords_df.set_index('ATA')['DESCRIPCION'].to_dict()
+                            df_filtered['Descripcion'] = df_filtered['ATA'].map(coords_map).fillna(df_filtered['ATA'])
+                        
+                        data_list = df_filtered.to_dict('records')
+                        print(f"📊 Tráfico: {len(data_list)} registros encontrados para {target_date}")
+                        return data_list
+        except Exception as e:
+            print(f"❌ Error en _get_current_data_list: {e}")
+                
+        return []
+
+    def _update_charts(self):
+        """Genera y muestra gráficos de Matplotlib basados en los datos actuales."""
+        if not self.data_ready_for_charts():
+            self.charts_container.visible = False
+            if self._page:
+                self._page.update()
+            return
+
+        try:
+            data = self._get_current_data_list()
+            if not data:
+                self.charts_container.visible = False
+                return
+
+            # Configuración de estilo Matplotlib (Dark Mode compatible)
+            plt.style.use('dark_background')
+            plt.rcParams['figure.facecolor'] = '#161b22'
+            plt.rcParams['axes.facecolor'] = '#161b22'
+            
+            fig, ax = plt.subplots(figsize=(7, 4))
+
+            if self.current_layer == "pollution":
+                # Gráfica de barras comparativa (Top 8 estaciones)
+                data_subset = [d for d in data if isinstance(d, dict) and 'nombre' in d][:8]
+                if not data_subset: 
+                    self.charts_container.visible = False
+                    return
+                
+                stations = [str(d.get('nombre', 'Est.'))[:12] for d in data_subset]
+                no2_vals = [float(d.get('no2_avg', 0) or 0) for d in data_subset]
+                o3_vals = [float(d.get('o3_avg', 0) or 0) for d in data_subset]
+
+                x = np.arange(len(stations))
+                width = 0.35
+                ax.bar(x - width/2, no2_vals, width, label='NO2', color='#E53935')
+                ax.bar(x + width/2, o3_vals, width, label='O3', color='#FFB300')
+                ax.set_ylabel('Concentración (ug/m3)')
+                ax.set_title('Calidad del Aire por Estación', color='white')
+                ax.set_xticks(x)
+                ax.set_xticklabels(stations, rotation=45, ha='right', color='white')
+                ax.legend()
+
+            elif self.current_layer == "rain":
+                # Gráfica de precipitaciones
+                data_subset = [d for d in data if isinstance(d, dict) and 'Estación' in d][:10]
+                if not data_subset:
+                    self.charts_container.visible = False
+                    return
+                    
+                names = [str(d.get('Estación', 'Est.'))[:12] for d in data_subset]
+                rain = [float(d.get('p_mes', 0)) if str(d.get('p_mes')) != 'N/A' and d.get('p_mes') is not None else 0 for d in data_subset]
+                ax.bar(names, rain, color='#1E88E5')
+                ax.set_ylabel('Precipitación (mm)')
+                ax.set_title('Precipitación Mensual por Estación', color='white')
+                plt.xticks(rotation=45, ha='right', color='white')
+
+            elif self.current_layer == "traffic":
+                # Asegurar que IMD sea numérico y filtrar dicts
+                clean_data = []
+                for d in data:
+                    if isinstance(d, dict):
+                        d_copy = d.copy()
+                        val = d_copy.get('IMD')
+                        try:
+                            d_copy['IMD_num'] = float(val) if val is not None else 0
+                        except:
+                            d_copy['IMD_num'] = 0
+                        clean_data.append(d_copy)
+                
+                if not clean_data:
+                    self.charts_container.visible = False
+                    return
+                    
+                data_sorted = sorted(clean_data, key=lambda x: x.get('IMD_num', 0), reverse=True)[:10]
+                names = [str(d.get('Descripcion') or d.get('ATA'))[:20] for d in data_sorted]
+                imds = [d.get('IMD_num', 0) for d in data_sorted]
+
+                ax.barh(names, imds, color='#7C4DFF')
+                ax.set_xlabel('Vehículos / Día')
+                ax.set_title('Puntos de Mayor Tráfico', color='white')
+                ax.invert_yaxis()
+                plt.xticks(color='white')
+                plt.yticks(color='white')
+
+            plt.tight_layout()
+            
+            # Guardar en buffer
+            img_buf = io.BytesIO()
+            plt.savefig(img_buf, format='png', dpi=120, transparent=True)
+            img_buf.seek(0)
+            
+            # Convertir a Base64 para Flet
+            img_b64 = base64.b64encode(img_buf.read()).decode('utf-8')
+            plt.close(fig)
+            
+            # Actualizar componente Flet usando el esquema data URI para compatibilidad
+            self.chart_image.src = f"data:image/png;base64,{img_b64}"
+            self.chart_image.visible = True
+            self.charts_container.visible = True
+            
+        except Exception as e:
+            print(f"❌ Error al generar gráfico en UI: {e}")
+            import traceback
+            traceback.print_exc()
+            self.charts_container.visible = False
+        
+        if self._page:
+            self._page.update()
+
+    def data_ready_for_charts(self):
+        """Verifica si hay datos suficientes para mostrar gráficos."""
+        if not self.data_loaded:
+            return False
+            
+        month, year = self.period_picker.value
+        if not month or not year:
+            return False
+            
+        return True
