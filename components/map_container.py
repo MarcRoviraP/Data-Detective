@@ -30,6 +30,12 @@ class MapContainer(ft.Container):
             "Flujo Tráfico DGT": [],
         }
 
+        # Almacenar polilíneas para tráfico
+        self.polyline_layer_ref = ft.Ref[mapa.PolylineLayer]()
+        self.all_polylines = {
+            "Flujo Tráfico DGT": [],
+        }
+
         # Estado para la tarjeta de información
         self.info_card_ref = ft.Ref[ft.Container]()
         self.selected_marker_data = None
@@ -47,24 +53,24 @@ class MapContainer(ft.Container):
         self.update_visible_markers()
 
     def update_visible_markers(self):
-        """Actualiza los marcadores visibles según la capa activa."""
+        """Actualiza los marcadores y polilíneas visibles según la capa activa."""
+        # Actualizar marcadores
         if self.marker_layer_ref.current:
             visible_markers = self.all_markers.get(self.current_layer, [])
             self.marker_layer_ref.current.markers = visible_markers
             print(
-                f"✅ Mostrando {len(visible_markers)
-                                 } marcadores de {self.current_layer}"
+                f"✅ Mostrando {len(visible_markers)} marcadores de {self.current_layer}"
             )
 
-            # Debug: mostrar primeros marcadores
-            if len(visible_markers) > 0:
-                print(
-                    f"   🔍 Primer marcador: {
-                      visible_markers[0].coordinates}"
-                )
+        # Actualizar polilíneas (tramos de tráfico)
+        if self.polyline_layer_ref.current:
+            visible_polylines = self.all_polylines.get(self.current_layer, [])
+            self.polyline_layer_ref.current.polylines = visible_polylines
+            if len(visible_polylines) > 0:
+                print(f"✅ Mostrando {len(visible_polylines)} tramos de tráfico")
 
-            if self._page_ref:
-                self._page_ref.update()
+        if self._page_ref:
+            self._page_ref.update()
 
     def on_marker_click(self, marker_data):
         """Maneja el click en un marcador."""
@@ -241,6 +247,7 @@ class MapContainer(ft.Container):
                     ref=self.tile_layer_ref,
                     url_template=MAP_STYLES[self.current_map_style],
                 ),
+                mapa.PolylineLayer(ref=self.polyline_layer_ref, polylines=[]),
                 mapa.MarkerLayer(ref=self.marker_layer_ref, markers=[]),
             ],
         )
@@ -485,7 +492,7 @@ class MapContainer(ft.Container):
                     lon = estacion.geo_point_2d.get("lon")
 
                     if lat and lon:
-                        # Determinar color según nivel de NO2
+                        # Determinar color según nivel de NO2 y calidad ambiental
                         color = COLORS["primary"]
                         try:
                             no2_value = float(estacion.no2)
@@ -493,6 +500,11 @@ class MapContainer(ft.Container):
                                 color = COLORS["event_danger"]
                             elif no2_value > 20:
                                 color = COLORS["traffic"]
+                            
+                            # Si la calidad es explícitamente buena o razonablemente buena, usar verde
+                            calidad_txt = str(getattr(estacion, 'calidad_am', '')).lower()
+                            if "buena" in calidad_txt:
+                                color = COLORS["primary"]
                         except:
                             pass
 
@@ -608,6 +620,20 @@ class MapContainer(ft.Container):
                             tooltip=f"🚗 {estacion.denominacion}\n📈 Estado: {estado_desc}",
                         )
                         self.all_markers["Flujo Tráfico DGT"].append(marker)
+
+                        # Crear polilíneas si hay datos de geometría
+                        if hasattr(estacion, "points") and estacion.points:
+                            for path in estacion.points:
+                                poly_coords = [
+                                    mapa.MapLatitudeLongitude(pt[1], pt[0])
+                                    for pt in path
+                                ]
+                                polyline = mapa.PolylineMarker(
+                                    coordinates=poly_coords,
+                                    color=color,
+                                    stroke_width=3,
+                                )
+                                self.all_polylines["Flujo Tráfico DGT"].append(polyline)
 
             # Actualizar marcadores visibles
             self.update_visible_markers()

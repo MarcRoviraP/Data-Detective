@@ -10,20 +10,39 @@ class EstacionTrafico:
     """Clase para representar una estación de tráfico."""
     
     def __init__(self, data: dict):
-        self.id = data.get("idtramo", "")
-        self.denominacion = data.get("denominacion", "")
-        self.estado = data.get("estado", "")
-        self.intensidad = data.get("intensidad", "-")
-        self.ocupacion = data.get("ocupacion", "-")
-        self.carga = data.get("carga", "-")
-        self.velocidad = data.get("velocidad", "-")
+        # Mapeo sugerido por el usuario:
+        # tramoId -> attributes.idtramo
+        # descripcion -> attributes.des_tramo
+        # intensidad -> attributes.lectura
+        # estado -> attributes.estado
+        # points -> geometry.paths
         
-        # Coordenadas GPS
-        geo = data.get("geo_point_2d", {})
-        if isinstance(geo, dict):
-            self.geo_point_2d = geo
-        else:
-            self.geo_point_2d = None
+        attributes = data.get("attributes", {})
+        geometry = data.get("geometry", {})
+        
+        self.id = attributes.get("idtramo", "")
+        self.denominacion = attributes.get("denominacion") or attributes.get("des_tramo") or attributes.get("nombre") or ""
+        self.estado = attributes.get("estado")
+        self.intensidad = attributes.get("lectura", "-")
+        
+        # Otros campos que la app podría usar
+        self.velocidad = attributes.get("velocidad", "-")
+        self.ocupacion = attributes.get("ocupacion", "-")
+        self.carga = attributes.get("carga", "-")
+        
+        # Geometría del tramo (lista de puntos para las líneas)
+        self.points = geometry.get("paths", [])
+        
+        # Coordenadas geográficas (punto de referencia para marcadores)
+        self.geo_point_2d = None
+        if self.points and len(self.points) > 0 and len(self.points[0]) > 0:
+            # Usamos el primer punto del primer path como referencia lat/lon
+            first_point = self.points[0][0]
+            if len(first_point) >= 2:
+                self.geo_point_2d = {
+                    "lon": first_point[0],
+                    "lat": first_point[1]
+                }
     
     def imprimir_informacion(self):
         """Imprime la información de la estación de tráfico."""
@@ -73,26 +92,33 @@ def get_estado_descripcion(codigo_estado):
 
 def get_traffic_data() -> List[EstacionTrafico]:
     """
-    Obtiene datos de tráfico en tiempo real de Valencia Open Data.
+    Obtiene datos de tráfico en tiempo real de Valencia ArcGIS Geoportal.
     
     Returns:
-        Lista de objetos EstacionTrafico con datos de tráfico.
+        Lista de objetos EstacionTrafico con datos de tráfico y geometría.
     """
-    url = "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/estat-transit-temps-real-estado-trafico-tiempo-real/records"
+    # URL ArcGIS para "Estat transit temps real" (ID 192)
+    url = "https://geoportal.valencia.es/server/rest/services/OPENDATA/Trafico/MapServer/192/query"
     
     params = {
-        "limit": 100,
-        "timezone": "Europe/Madrid"
+        "where": "1=1",
+        "outFields": "*",
+        "returnGeometry": "true",
+        "f": "json",
+        "outSR": "4326",
+        "resultRecordCount": 1000
     }
     
     try:
         response = requests.get(url, params=params, timeout=15)
+        print(response.url)
         response.raise_for_status()
         
         data = response.json()
         estaciones = []
         
-        for record in data.get("results", []):
+        # En ArcGIS los datos vienen en 'features'
+        for record in data.get("features", []):
             estacion = EstacionTrafico(record)
             estaciones.append(estacion)
         
@@ -102,7 +128,7 @@ def get_traffic_data() -> List[EstacionTrafico]:
         print(f"❌ Error al obtener datos de tráfico: {e}")
         return []
     except Exception as e:
-        print(f"❌ Error inesperado: {e}")
+        print(f"❌ Error inesperado en get_traffic_data: {e}")
         return []
 
 

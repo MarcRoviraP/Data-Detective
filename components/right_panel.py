@@ -354,6 +354,7 @@ class RightPanel(ft.Container):
         self.btnRef = ft.Ref[ft.Row]()
         self.map_ref = ft.Ref[mapa.Map]()
         self.marker_layer_ref = ft.Ref[mapa.MarkerLayer]()
+        self.polyline_layer_ref = ft.Ref[mapa.PolylineLayer]()
 
         # Date picker de mes/año
         self.period_picker = MonthYearPicker(
@@ -648,6 +649,7 @@ class RightPanel(ft.Container):
                 mapa.TileLayer(
                     url_template=MAP_STYLES["Normal"],
                 ),
+                mapa.PolylineLayer(ref=self.polyline_layer_ref, polylines=[]),
                 mapa.MarkerLayer(ref=self.marker_layer_ref, markers=[]),
             ],
         )
