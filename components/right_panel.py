@@ -84,7 +84,7 @@ class MonthYearPicker(ft.Row):
 
         self.controls = [
             ft.IconButton(
-                icon=ft.Icons.CHEVRON_LEFT,
+                icon=ft.icons.Icons.CHEVRON_LEFT,
                 icon_size=18,
                 tooltip="Mes anterior",
                 on_click=self._prev_month,
@@ -92,7 +92,7 @@ class MonthYearPicker(ft.Row):
             ),
             self._label,
             ft.IconButton(
-                icon=ft.Icons.CHEVRON_RIGHT,
+                icon=ft.icons.Icons.CHEVRON_RIGHT,
                 icon_size=18,
                 tooltip="Mes siguiente",
                 on_click=self._next_month,
@@ -182,7 +182,7 @@ class MonthYearPicker(ft.Row):
         year_nav = ft.Row(
             controls=[
                 ft.IconButton(
-                    icon=ft.Icons.CHEVRON_LEFT,
+                    icon=ft.icons.Icons.CHEVRON_LEFT,
                     icon_size=18,
                     on_click=self._dialog_prev_year,
                     icon_color=ft.Colors.BLUE_300,
@@ -190,18 +190,18 @@ class MonthYearPicker(ft.Row):
                 ft.Text(
                     str(self._state['dialog_year']),
                     size=16,
-                    weight=ft.FontWeight.BOLD,
+                    weight="bold",
                     text_align=ft.TextAlign.CENTER,
                     expand=True,
                 ),
                 ft.IconButton(
-                    icon=ft.Icons.CHEVRON_RIGHT,
+                    icon=ft.icons.Icons.CHEVRON_RIGHT,
                     icon_size=18,
                     on_click=self._dialog_next_year,
                     icon_color=ft.Colors.BLUE_300,
                 ),
             ],
-            alignment=ft.MainAxisAlignment.CENTER,
+            alignment="center",
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
@@ -374,6 +374,32 @@ class RightPanel(ft.Container):
             "traffic": {"year_start": 2016, "year_end": 2026, "month_start": 1, "month_end": 1}
         }
 
+        self.weather_markers = []
+        self.weather_stations_info = {}
+        self.selected_weather_station = "8414A"
+
+        self.traffic_data = {}
+        self.traffic_stations_info = {}
+        self.traffic_markers = []
+        self.selected_traffic_station = None
+        self.data_loaded = False
+
+        self.traffic_info_content = ft.Column(spacing=10)
+        self.traffic_container = ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    ft.Icon(ft.icons.Icons.TRAFFIC_OUTLINED, color=ft.Colors.ORANGE_400, size=18),
+                    ft.Text("DETALLE DE TRÁFICO", size=14, weight="bold"),
+                ]),
+                self.traffic_info_content
+            ]),
+            padding=15,
+            bgcolor=COLORS["panel_medium"],
+            border=ft.border.all(1, ft.Colors.with_opacity(0.05, ft.Colors.WHITE)),
+            border_radius=15,
+            visible=False
+        )
+
         # Carpeta por defecto para exportaciones
         self.export_dir = os.path.join(os.getcwd(), "exports")
         if not os.path.exists(self.export_dir):
@@ -381,82 +407,80 @@ class RightPanel(ft.Container):
 
         # Datos AEMET
         self.aemet_data = {}
-        self.weather_markers = []
-        self.weather_stations_info = {}
-        self.selected_weather_station = "8414A"  # Default Valencia Aeropuerto
-
-        # Datos Tráfico
-        self.traffic_data = {}
-        self.traffic_stations_info = {}
-        self.traffic_markers = []
-        self.selected_traffic_station = None  # Estación seleccionada en tráfico
-        # self.traffic_data_df será inicializado en on_data_loaded si hay parquet
-
-        # Estado de carga
-        self.data_loaded = False
-
-        self.weather_info_text = ft.Text("", size=12, color=ft.Colors.BLUE_400)
+        self.weather_info_content = ft.Column(spacing=10)
         self.weather_container = ft.Container(
-
             content=ft.Column([
-                ft.Text("RESUMEN CLIMATOLÓGICO", size=14,
-                        weight=ft.FontWeight.BOLD),
-                self.weather_info_text
+                ft.Row([
+                    ft.Icon(ft.icons.Icons.THERMOSTAT, color=ft.Colors.BLUE_400, size=18),
+                    ft.Text("RESUMEN CLIMATOLÓGICO", size=14, weight="bold"),
+                ]),
+                self.weather_info_content
             ]),
-            padding=10,
-            bgcolor="#161b22",
-            border_radius=10,
+            padding=15,
+            bgcolor=COLORS["panel_medium"],
+            border=ft.border.all(1, ft.Colors.with_opacity(0.05, ft.Colors.WHITE)),
+            border_radius=15,
             visible=False,
-
         )
 
-        self.pollution_info_text = ft.Text(
-            "", size=12, color=ft.Colors.GREEN_400)
+        self.pollution_info_content = ft.Column(spacing=10)
         self.pollution_container = ft.Container(
             content=ft.Column([
-                ft.Text("DETALLE DE CALIDAD DEL AIRE", size=14,
-                        weight=ft.FontWeight.BOLD),
-                self.pollution_info_text
+                ft.Row([
+                    ft.Icon(ft.icons.Icons.FILTER_VINTAGE_OUTLINED, color=ft.Colors.GREEN_400, size=18),
+                    ft.Text("CALIDAD DEL AIRE", size=14, weight="bold"),
+                ]),
+                self.pollution_info_content
             ]),
-            padding=10,
-            bgcolor="#161b22",
-            border_radius=10,
+            padding=15,
+            bgcolor=COLORS["panel_medium"],
+            border=ft.border.all(1, ft.Colors.with_opacity(0.05, ft.Colors.WHITE)),
+            border_radius=15,
             visible=False
         )
 
-        self.traffic_info_text = ft.Text(
-            "", size=12, color=ft.Colors.ORANGE_400)
+        self.traffic_info_content = ft.Column(spacing=10)
         self.traffic_container = ft.Container(
             content=ft.Column([
-                ft.Text("DETALLE DE TRÁFICO HISTÓRICO", size=14,
-                        weight=ft.FontWeight.BOLD),
-                self.traffic_info_text
+                ft.Row([
+                    ft.Icon(ft.icons.Icons.TRAFFIC_OUTLINED, color=ft.Colors.ORANGE_400, size=18),
+                    ft.Text("DETALLE DE TRÁFICO", size=14, weight="bold"),
+                ]),
+                self.traffic_info_content
             ]),
-            padding=10,
-            bgcolor="#161b22",
-            border_radius=10,
+            padding=15,
+            bgcolor=COLORS["panel_medium"],
+            border=ft.border.all(1, ft.Colors.with_opacity(0.05, ft.Colors.WHITE)),
+            border_radius=15,
             visible=False
         )
 
-        # Contenedor para gráficos de Matplotlib
-        self.chart_image = ft.Image(
-            src="",
-            visible=False,
-            fit="contain",
+        # Contenedor dinámico para gráficos nativos interactivos (Flet)
+        self.chart_content = ft.Container(
+            content=ft.Text("Cargando análisis...", color=ft.Colors.GREY_600),
+            padding=10,
             height=300,
-            border_radius=10,
+            alignment=ft.Alignment.CENTER,
+            width=450,
+            bgcolor="#1d2636", # Fondo ligeramente distinto para depuración visual
+            border_radius=10
         )
+        
         self.charts_container = ft.Container(
             content=ft.Column([
-                ft.Text("📊 ANÁLISIS VISUAL DE DATOS", size=14,
-                        weight=ft.FontWeight.BOLD),
-                self.chart_image
-            ]),
-            padding=10,
-            bgcolor="#161b22",
-            border_radius=10,
+                ft.Row([
+                    ft.Icon(ft.icons.Icons.ANALYTICS_OUTLINED, color=COLORS["primary"], size=20),
+                    ft.Text("ANÁLISIS DINÁMICO", size=14, weight="bold"),
+                ], alignment="start"),
+                ft.Divider(height=1, color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
+                self.chart_content
+            ], spacing=10),
+            padding=ft.padding.all(15),
+            bgcolor=COLORS["panel_medium"],
+            border=ft.border.all(1, ft.Colors.with_opacity(0.05, ft.Colors.WHITE)),
+            border_radius=15,
             visible=False,
-            margin=ft.margin.only(bottom=20)
+            margin=ft.margin.only(bottom=20, top=10)
         )
 
         self.content = ft.Container(
@@ -464,7 +488,7 @@ class RightPanel(ft.Container):
             content=ft.Column(
                 controls=[
                     ft.Text("DATOS HISTORICOS", size=30,
-                            weight=ft.FontWeight.BOLD),
+                            weight="bold"),
                     # Botones de capa
                     ft.Row(
                         ref=self.btnRef,
@@ -507,7 +531,7 @@ class RightPanel(ft.Container):
                     ft.Row(
                         controls=[
                             ft.Text("Período:", size=12,
-                                    weight=ft.FontWeight.BOLD),
+                                    weight="bold"),
                             self.period_picker,
                             ft.IconButton(
                                 icon=ft.icons.Icons.SEARCH,
@@ -521,30 +545,30 @@ class RightPanel(ft.Container):
                             ),
                         ],
                         spacing=5,
-                        alignment=ft.MainAxisAlignment.START,
+                        alignment="start",
                     ),
 
                     # Botones de Exportación
                     ft.Row(
                         controls=[
                             ft.Text("Exportar:", size=12,
-                                    weight=ft.FontWeight.BOLD),
+                                    weight="bold"),
                             ft.TextButton(
                                 "JSON",
                                 style=ft.ButtonStyle(mouse_cursor=ft.MouseCursor.CLICK),
-                                icon=ft.Icons.DOWNLOAD,
+                                icon=ft.icons.Icons.DOWNLOAD,
                                 on_click=self._on_export_json_click,
                             ),
                             ft.TextButton(
                                 "CSV",
                                 style=ft.ButtonStyle(mouse_cursor=ft.MouseCursor.CLICK),
-                                icon=ft.Icons.FILE_DOWNLOAD,
+                                icon=ft.icons.Icons.FILE_DOWNLOAD,
                                 on_click=self._on_export_csv_click,
                             ),
                             ft.ElevatedButton(
                                 "Generar Informe PDF",
                                 style=ft.ButtonStyle(mouse_cursor=ft.MouseCursor.CLICK),
-                                icon=ft.Icons.PICTURE_AS_PDF,
+                                icon=ft.icons.Icons.PICTURE_AS_PDF,
                                 bgcolor=ft.Colors.RED_800,
                                 color=ft.Colors.WHITE,
                                 on_click=self._on_export_pdf_click,
@@ -560,7 +584,7 @@ class RightPanel(ft.Container):
 
                     # Mini mapa para mostrar la ubicación del sensor seleccionado
                     ft.Text("Ubicación de Sensores", size=14,
-                            weight=ft.FontWeight.BOLD),
+                            weight="bold"),
 
                     # Mapa
                     ft.Container(
@@ -609,15 +633,34 @@ class RightPanel(ft.Container):
         self.btnRef.current.controls[1].color = ft.Colors.WHITE if self.current_layer == "rain" else ft.Colors.BLACK
         self.btnRef.current.controls[2].color = ft.Colors.WHITE if self.current_layer == "traffic" else ft.Colors.BLACK
 
+        # Guardar el valor actual ANTES de cambiar rangos (set_range puede resetearlo)
+        month_before, year_before = self.period_picker.value
+
         # Actualizar rangos de fecha para esta capa
         self.update_date_ranges_for_layer(layer)
+
+        # Si el picker quedó sin valor válido tras cambiar rangos, restaurar el anterior
+        month_after, year_after = self.period_picker.value
+        if (not month_after or not year_after) and month_before and year_before:
+            try:
+                # Usar _set para restaurar sin disparar eventos externos
+                self.period_picker._set(month=int(month_before), year=int(year_before))
+                self.period_picker._clamp_month_to_range()
+                self.period_picker._refresh_label()
+            except Exception:
+                pass  # Si el valor no es válido para el nuevo rango, dejarlo como está
 
         # Resetear visibilidad de contenedores al cambiar capa
         self.weather_container.visible = False
         self.pollution_container.visible = False
         self.traffic_container.visible = False
 
-        # Actualizar marcadores según la capa
+        # 1. Iniciar generación de gráficos en hilo separado inmediatamente
+        import threading
+        thread = threading.Thread(target=self._update_charts, daemon=True)
+        thread.start()
+
+        # 2. Actualizar marcadores según la capa seleccionada
         if self.current_layer == "pollution":
             self.update_pollution_markers()
         elif self.current_layer == "rain":
@@ -625,11 +668,6 @@ class RightPanel(ft.Container):
         elif self.current_layer == "traffic":
             if hasattr(self, 'traffic_data_df') and self.traffic_data_df is not None:
                 self.update_historical_traffic_markers()
-
-        # Actualizar gráficos al cambiar de capa (en hilo separado)
-        import threading
-        thread = threading.Thread(target=self._update_charts, daemon=True)
-        thread.start()
 
         self._page.update()
 
@@ -735,6 +773,11 @@ class RightPanel(ft.Container):
             if self.current_layer == "pollution":
                 self.update_pollution_markers()
                 self.update_weather_summary()
+                
+                # Cargar gráfico inicial
+                import threading
+                thread = threading.Thread(target=self._update_charts, daemon=True)
+                thread.start()
         except Exception as e:
             print(f"❌ Error actualizando UI: {e}"); _tb.print_exc()
 
@@ -887,7 +930,7 @@ class RightPanel(ft.Container):
                     lat,
                     lon,
                     color,
-                    ft.icons.Icons.CLOUD,
+                    "cloud",
                     marker_data,
                     tooltip_text,
                     on_click=lambda e, s=sensor: self.on_pollution_sensor_click(
@@ -909,30 +952,30 @@ class RightPanel(ft.Container):
                 self._page.update()
 
     def _create_marker(self, lat, lon, color, icon, marker_data=None, tooltip_text=None, on_click=None):
-        """Crea un marcador para el mini-mapa."""
-        # Color de fondo con transparencia (solo si es un hex string)
-        if isinstance(color, str) and color.startswith("#"):
-            bg_color = color + "33"
-        else:
-            bg_color = "#33333333"  # fallback semitransparente
-
-        # Usar tooltip personalizado o por defecto
-        if tooltip_text is None and marker_data:
-            tooltip_text = marker_data.get("titulo", "Sensor")
-
+        """Crea un marcador para el mini-mapa con alta visibilidad."""
+        # Usar color sólido para el borde y el icono, y fondo vibrante
+        marker_color = color if color else ft.Colors.BLUE
+        
+        # Traducir nombre de icono si es necesario
+        icon_name = icon
+        if icon == "cloud": icon_name = ft.icons.Icons.CLOUD
+        elif icon == "rain": icon_name = ft.icons.Icons.WATER_DROP
+        elif icon == "traffic": icon_name = ft.icons.Icons.TRAFFIC
+        
         return mapa.Marker(
             content=ft.Container(
                 width=30,
                 height=30,
-                bgcolor=bg_color,
+                bgcolor=marker_color,
                 border_radius=15,
-                alignment=ft.alignment.Alignment(0, 0),
+                border=ft.border.all(2, ft.Colors.WHITE),
+                alignment=ft.alignment.Alignment(0, 0), # Centro exacto
                 content=ft.Icon(
-                    icon,
-                    color=color,
-                    size=18
+                    icon_name,
+                    color=ft.Colors.WHITE,
+                    size=16
                 ),
-                tooltip=tooltip_text,
+                tooltip=tooltip_text if tooltip_text else "Sensor",
                 on_click=on_click
             ),
             coordinates=mapa.MapLatitudeLongitude(lat, lon),
@@ -992,46 +1035,43 @@ class RightPanel(ft.Container):
             tm_max = weather.get('tm_max')
             tm_min = weather.get('tm_min')
 
-            self.weather_container.content.controls[0].value = "🌦️ RESUMEN DEL CLIMA"
+            self.weather_info_content.controls = [
+                ft.Text(f"📍 {station_name}", size=13, weight=ft.FontWeight.W_600),
+                ft.Divider(height=1, color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
+            ]
 
-            lines = [f"📍 Estación: {station_name}\n"]
-
-            # Temperatura media y clasificación
+            # Temperatura con ProgressBar visual
             if tm_mes and str(tm_mes) not in ["N/A", "None", "nan"]:
                 try:
                     temp = float(tm_mes)
-                    if temp < 10:
-                        clado_temp = "❄️ Frío"
-                    elif temp < 20:
-                        clado_temp = "⛅ Templado"
-                    elif temp < 30:
-                        clado_temp = "☀️ Cálido"
-                    else:
-                        clado_temp = "🔥 Muy caluroso"
-                    lines.append(
-                        f"🌡️ Temperatura media: {tm_mes}°C ({clado_temp})")
-                except:
-                    lines.append(f"🌡️ Temperatura media: {tm_mes}°C")
-
-            # Máximas y mínimas
-            t_max_valid = tm_max and str(tm_max) not in ["N/A", "None", "nan"]
-            t_min_valid = tm_min and str(tm_min) not in ["N/A", "None", "nan"]
-            if t_max_valid or t_min_valid:
-                max_str = f"{tm_max}°C" if t_max_valid else "?"
-                min_str = f"{tm_min}°C" if t_min_valid else "?"
-                lines.append(f"📈 Máxima: {max_str} | 📉 Mínima: {min_str}")
+                    # Escala de -10 a 50 para el progress
+                    progress = (temp + 10) / 60
+                    color = ft.Colors.BLUE_400 if temp < 15 else ft.Colors.ORANGE_400 if temp < 30 else ft.Colors.RED_400
+                    
+                    self.weather_info_content.controls.append(ft.Column([
+                        ft.Row([
+                            ft.Text("Temperatura Media", size=11, color=ft.Colors.GREY_400),
+                            ft.Text(f"{temp:.1f}°C", size=11, weight=ft.FontWeight.BOLD)
+                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.ProgressBar(value=max(0, min(1, progress)), color=color, bgcolor=ft.Colors.with_opacity(0.1, color))
+                    ], spacing=2))
+                except: pass
 
             # Lluvia
             if p_mes and str(p_mes) not in ["N/A", "None", "nan"]:
-                lines.append(f"🌧️ Lluvia total: {p_mes} mm acumulados")
+                try:
+                    val = float(p_mes)
+                    self.weather_info_content.controls.append(ft.Row([
+                        ft.Icon(ft.icons.Icons.UPCOMING, size=14, color=ft.Colors.BLUE_200),
+                        ft.Text(f"Precipitación: {val:.1f} mm", size=12)
+                    ]))
+                except: pass
 
-            self.weather_info_text.value = "\n".join(lines)
             self.weather_container.visible = True
         else:
             self.weather_container.visible = False
 
-        if self._page:
-            self._page.update()
+        if self._page: self._page.update()
 
     def update_traffic_markers(self):
         """Actualiza los marcadores de tráfico en el mini-mapa."""
@@ -1183,7 +1223,7 @@ class RightPanel(ft.Container):
             tooltip = f"📍 {desc}\n🚗 {int(imd):,} vehículos diarios (Promedio)"
 
             marker = self._create_marker(
-                lat, lon, color, ft.icons.Icons.TRAFFIC,
+                lat, lon, color, "traffic",
                 marker_data, tooltip,
                 on_click=lambda e: self.on_historical_traffic_click(row, desc)
             )
@@ -1205,33 +1245,45 @@ class RightPanel(ft.Container):
         final_desc = desc if desc else "Ubicación desconocida"
         print(f"📍 Punto de tráfico seleccionado: {final_desc}")
 
-        # Actualizar título del contenedor para que sea dinámico
-        self.pollution_container.content.controls[0].value = "📊 ESTADÍSTICAS DE TRÁFICO"
-
         imd = int(row['IMD'])
         # Clasificación amigable del nivel de tráfico
         if imd < 10000:
             estado = "🟢 Fluido (Poco tráfico)"
+            status_color = ft.Colors.GREEN_400
         elif imd < 25000:
             estado = "🟡 Moderado"
+            status_color = ft.Colors.LIME_500
         elif imd < 45000:
             estado = "🟠 Denso (Mucho tráfico)"
+            status_color = ft.Colors.ORANGE_500
         else:
             estado = "🔴 Saturado (Tráfico intenso)"
+            status_color = ft.Colors.RED_500
 
         # Formatear fecha
         fecha = row['FECHA']
         fecha_str = f"{MONTH_NAMES[fecha.month-1]} {fecha.year}" if hasattr(
             fecha, 'month') else str(fecha)
 
-        self.pollution_info_text.value = (
-            f"📍 Punto de medida:\n   {final_desc}\n\n"
-            f"🚗 Tráfico promedio:\n   {imd:,} vehículos cada día\n\n"
-            f"📈 Nivel de congestión:\n   {estado}\n\n"
-            f"📅 Mes consultado: {fecha_str}\n"
-            f"🆔 Identificador: {row['ATA']}"
-        )
-        self.pollution_container.visible = True
+        self.traffic_info_content.controls = [
+            ft.Text(f"📍 {final_desc}", size=13, weight=ft.FontWeight.W_600),
+            ft.Text(f"Nivel: {estado}", size=11, color=status_color),
+            ft.Divider(height=1, color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
+            ft.Column([
+                ft.Row([
+                    ft.Text("Intensidad (IMD)", size=10, color=ft.Colors.GREY_400),
+                    ft.Text(f"{imd:,} vehículos", size=10, weight=ft.FontWeight.BOLD)
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                ft.ProgressBar(value=min(1.0, imd / 100000), color=ft.Colors.ORANGE_400, bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.ORANGE_400))
+            ], spacing=2),
+            ft.Text(f"📅 Mes: {fecha_str}", size=10, color=ft.Colors.GREY_500),
+            ft.Text(f"🆔 ID ATA: {row['ATA']}", size=10, color=ft.Colors.GREY_500),
+        ]
+        
+        # Ocultar otros y mostrar este
+        self.pollution_container.visible = False
+        self.weather_container.visible = False
+        self.traffic_container.visible = True
 
         if self._page:
             self._page.update()
@@ -1314,68 +1366,6 @@ class RightPanel(ft.Container):
             print(f"❌ Error en exportación: {ex}")
             self._show_snackbar(f"❌ Error: {str(ex)}")
 
-    def _get_current_data_list(self):
-        """Obtiene la lista de datos según la capa y fecha actual."""
-        month, year = self.period_picker.value
-
-        if self.current_layer == "pollution":
-            return self.filter_sensors_by_date(month, year)
-
-        elif self.current_layer == "rain":
-            results = []
-            month_int = int(month)
-            date_key = f"{year}-{month_int:02}"
-
-            for ind, info in self.weather_stations_info.items():
-                station_data = self.aemet_data.get(ind, {})
-                weather = station_data.get(
-                    date_key) or station_data.get(f"{year}-{month_int}")
-                if weather:
-                    entry = {"Estación": info['nombre'],
-                             "Indicativo": ind, "Fecha": date_key}
-                    entry.update(weather)
-                    results.append(entry)
-            return results
-
-        elif self.current_layer == "traffic":
-            if not hasattr(self, 'traffic_data_df') or self.traffic_data_df is None:
-                return []
-
-            month_int = int(month)
-            date_str = f"{year}-{month_int:02}"
-
-            df = self.traffic_data_df
-            df_filtered = df[df['FECHA'] == date_str].copy()
-
-            # Limpiar nombres de columnas (quitar saltos de línea \r\n)
-            df_filtered.columns = [c.strip() for c in df_filtered.columns]
-
-            # Formatear fecha para el PDF/JSON: dd-MM-YYYY (usamos dia 01)
-            df_filtered['Fecha_Formato'] = f"01-{month_int:02}-{year}"
-
-            # Enriquecer con descripciones si están disponibles
-            if hasattr(self, 'traffic_coords_df') and self.traffic_coords_df is not None:
-                coords_map = self.traffic_coords_df.set_index(
-                    'ATA')['DESCRIPCION'].to_dict()
-                # Si no hay descripción, usar el ID de ATA para que no salga 'nan'
-                df_filtered['Descripcion'] = df_filtered['ATA'].map(coords_map).fillna(
-                    "Punto tráfico " + df_filtered['ATA'].astype(str))
-            else:
-                df_filtered['Descripcion'] = "Punto tráfico " + \
-                    df_filtered['ATA'].astype(str)
-
-            # Arreglar error de JSON: Convertir Timestamps de pandas a strings
-            for col in df_filtered.columns:
-                if pd.api.types.is_datetime64_any_dtype(df_filtered[col]):
-                    df_filtered[col] = df_filtered[col].dt.strftime('%Y-%m-%d')
-
-            # REQUISITO: No guardar FECHA_RAW
-            if 'FECHA_RAW' in df_filtered.columns:
-                df_filtered = df_filtered.drop(columns=['FECHA_RAW'])
-
-            return df_filtered.to_dict('records')
-
-        return []
 
     def _save_json(self, path, data):
         with open(path, 'w', encoding='utf-8') as f:
@@ -1453,7 +1443,13 @@ class RightPanel(ft.Container):
 
         if self.current_layer == "pollution":
             # Gráfica de barras comparativa (Top 8 estaciones)
-            stations = [d.get('nombre', 'Est.')[:12] for d in data[:8]]
+            stations = []
+            for d in data[:8]:
+                nombre = d.get('nombre', 'Est.')
+                for prefijo in ["VALENCIA,", "VALÈNCIA,", "VALÉNCIA,", "VALENCIA", "VALÈNCIA", "VALÉNCIA"]:
+                    nombre = nombre.replace(prefijo, "")
+                stations.append(nombre.strip(", ").strip()[:15])
+            
             no2_vals = [d.get('no2_avg', 0) or 0 for d in data[:8]]
             o3_vals = [d.get('o3_avg', 0) or 0 for d in data[:8]]
 
@@ -1671,44 +1667,42 @@ class RightPanel(ft.Container):
         o3 = sensor.get('o3_avg')
         pm10 = sensor.get('pm10_avg')
 
-        # Asegurar que el título sea correcto para contaminación
-        self.pollution_container.content.controls[0].value = "🍀 CALIDAD DEL AIRE"
-
         # Clasificación amigable de NO2
         if no2:
-            if no2 < 20:
-                estado_no2 = "🟢 Excelente"
-            elif no2 < 40:
-                estado_no2 = "🟡 Bueno"
-            elif no2 < 100:
-                estado_no2 = "🟠 Regular"
-            else:
-                estado_no2 = "🔴 Malo (Mucha contaminación)"
+            if no2 < 20: estado_no2 = "🍀 Excelente"
+            elif no2 < 40: estado_no2 = "🟡 Bueno"
+            elif no2 < 100: estado_no2 = "🟠 Regular"
+            else: estado_no2 = "🔴 Malo"
         else:
             estado_no2 = "Desconocido"
 
-        info_text = (
-            f"📍 Estación de control:\n   {sensor['nombre']}\n\n"
-            f"💨 Calidad del aire:\n   {estado_no2}\n\n"
-        )
+        # Clasificación de NO2 para UI
+        status_color = ft.Colors.GREEN_400
+        if no2 and no2 > 40: status_color = ft.Colors.RED_400
+        elif no2 and no2 > 20: status_color = ft.Colors.ORANGE_400
 
-        has_metrics = False
-        metrics_block = "📊 Mediciones promedio:\n"
+        self.pollution_info_content.controls = [
+            ft.Text(f"📍 {sensor['nombre']}", size=13, weight=ft.FontWeight.W_600),
+            ft.Text(f"Estado general: {estado_no2}", size=11, color=status_color),
+            ft.Divider(height=1, color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
+        ]
 
-        if no2 and str(no2) not in ["None", "nan", "N/A"]:
-            metrics_block += f"   • Dióxido de Nitrógeno: {no2:.1f} μg/m³\n"
-            has_metrics = True
-        if o3 and str(o3) not in ["None", "nan", "N/A"]:
-            metrics_block += f"   • Ozono (O3): {o3:.1f} μg/m³\n"
-            has_metrics = True
-        if pm10 and str(pm10) not in ["None", "nan", "N/A"]:
-            metrics_block += f"   • Partículas (PM10): {pm10:.1f} μg/m³\n"
-            has_metrics = True
+        # Métricas individuales con barras de progreso
+        for label, val, color, limit in [
+            ("Dióxido Nitrógeno (NO2)", no2, ft.Colors.BLUE_400, 100),
+            ("Ozono (O3)", o3, ft.Colors.PURPLE_400, 180),
+            ("Partículas (PM10)", pm10, ft.Colors.AMBER_400, 50)
+        ]:
+            if val and str(val) not in ["None", "nan", "N/A"]:
+                progress = min(1.0, float(val) / limit)
+                self.pollution_info_content.controls.append(ft.Column([
+                    ft.Row([
+                        ft.Text(label, size=10, color=ft.Colors.GREY_400),
+                        ft.Text(f"{float(val):.1f} μg/m³", size=10, weight=ft.FontWeight.BOLD)
+                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                    ft.ProgressBar(value=progress, color=color, bgcolor=ft.Colors.with_opacity(0.1, color))
+                ], spacing=2))
 
-        if has_metrics:
-            info_text += metrics_block
-
-        self.pollution_info_text.value = info_text
         self.pollution_container.visible = True
 
         # Opcional: Centrar el mini-mapa en el sensor
@@ -1746,7 +1740,12 @@ class RightPanel(ft.Container):
         # Actualizar resumen climatológico independientemente de la capa
         # self.update_weather_summary()
 
-        # Actualizar según la capa activa
+        # 1. Iniciar generación de gráficos en hilo separado inmediatamente
+        import threading
+        thread = threading.Thread(target=self._update_charts, daemon=True)
+        thread.start()
+
+        # 2. Actualizar marcadores según la capa activa
         if self.current_layer == "pollution":
             print("  → Actualizando marcadores de contaminación...")
             self.update_pollution_markers()
@@ -1759,11 +1758,6 @@ class RightPanel(ft.Container):
                 self.update_historical_traffic_markers()
             else:
                 self.update_traffic_markers()
-
-        # Actualizar gráficos en un hilo separado para no bloquear la UI
-        import threading
-        thread = threading.Thread(target=self._update_charts, daemon=True)
-        thread.start()
 
     def on_year_change(self, e):
         """Manejador cuando cambia el año - actualiza los meses disponibles."""
@@ -1817,7 +1811,7 @@ class RightPanel(ft.Container):
             month_int = int(month)
             year_int = int(year)
             
-            print(f"📊 Buscando datos para gráficos: {month_int}/{year_int} (Capa: {self.current_layer})")
+            print(f"📊 Buscando datos para gráficos/informes: {month_int}/{year_int} (Capa: {self.current_layer})")
             
             if self.current_layer == "pollution":
                 data = self.filter_sensors_by_date(month, year)
@@ -1825,43 +1819,79 @@ class RightPanel(ft.Container):
                 return data if isinstance(data, list) else []
             
             elif self.current_layer == "rain":
-                if hasattr(self, 'aemet_data') and isinstance(self.aemet_data, dict) and 'aemet_data' in self.aemet_data:
-                    filtered_data = []
-                    target_date = f"{year_int}-{month_int:02d}"
-                    station_data_dict = self.aemet_data['aemet_data']
+                # Versión corregida para AEMET (soporta ambos formatos de fecha: M y MM)
+                results = []
+                date_key_mm = f"{year_int}-{month_int:02d}"
+                date_key_m = f"{year_int}-{month_int}"
+
+                if hasattr(self, 'aemet_data') and isinstance(self.aemet_data, dict):
+                    # self.aemet_data ya contiene el diccionario de estaciones directo
+                    for ind, station_data in self.aemet_data.items():
+                        # REQUISITO: Solo estaciones de la zona de Valencia (que estén en el mapa)
+                        if hasattr(self, 'weather_stations_info') and ind not in self.weather_stations_info:
+                            continue
+
+                        # Intentar ambos formatos de fecha: 2023-01 y 2023-1
+                        weather = station_data.get(date_key_mm) or station_data.get(date_key_m)
+                        
+                        if weather:
+                            entry = weather.copy()
+                            # Enriquecer con nombre de estación si lo tenemos
+                            if hasattr(self, 'weather_stations_info') and ind in self.weather_stations_info:
+                                entry['Estación'] = self.weather_stations_info[ind]['nombre']
+                            # Simplificar nombre de la estación (quitar VALENCIA, VALÈNCIA, etc.)
+                            nombre = entry.get('Estación', ind)
+                            for prefijo in ["VALENCIA,", "VALÈNCIA,", "VALÉNCIA,", "VALENCIA", "VALÈNCIA", "VALÉNCIA"]:
+                                nombre = nombre.replace(prefijo, "")
+                            entry['Estación'] = nombre.strip(", ").strip()
+
+                            entry['Indicativo'] = ind
+                            entry['Fecha'] = date_key_mm
+                            results.append(entry)
                     
-                    for indicativo, station_dates in station_data_dict.items():
-                        if isinstance(station_dates, dict) and target_date in station_dates:
-                            item = station_dates[target_date].copy()
-                            if indicativo in self.weather_stations_info:
-                                item['Estación'] = self.weather_stations_info[indicativo]['nombre']
-                            filtered_data.append(item)
-                    
-                    print(f"📊 Clima: {len(filtered_data)} registros encontrados para {target_date}")
-                    return filtered_data
+                    print(f"📊 Clima: {len(results)} registros encontrados para {date_key_mm}")
+                    return results
             
             elif self.current_layer == "traffic":
-                if hasattr(self, 'traffic_data_df') and self.traffic_data_df is not None:
-                    df = self.traffic_data_df
-                    target_date = f"{year_int}-{month_int:02d}"
-                    if 'FECHA' in df.columns:
-                        mask = df['FECHA'] == target_date
-                        df_filtered = df[mask].copy()
-                        
-                        if hasattr(self, 'traffic_coords_df') and self.traffic_coords_df is not None:
-                            coords_map = self.traffic_coords_df.set_index('ATA')['DESCRIPCION'].to_dict()
-                            df_filtered['Descripcion'] = df_filtered['ATA'].map(coords_map).fillna(df_filtered['ATA'])
-                        
-                        data_list = df_filtered.to_dict('records')
-                        print(f"📊 Tráfico: {len(data_list)} registros encontrados para {target_date}")
-                        return data_list
+                if not hasattr(self, 'traffic_data_df') or self.traffic_data_df is None:
+                    return []
+
+                date_str = f"{year_int}-{month_int:02d}"
+                df = self.traffic_data_df
+                
+                if 'FECHA' not in df.columns:
+                    return []
+                    
+                df_filtered = df[df['FECHA'] == date_str].copy()
+                if df_filtered.empty:
+                    return []
+
+                # Limpiar nombres de columnas
+                df_filtered.columns = [c.strip() for c in df_filtered.columns]
+
+                # Enriquecer con descripciones
+                if hasattr(self, 'traffic_coords_df') and self.traffic_coords_df is not None:
+                    coords_map = self.traffic_coords_df.set_index('ATA')['DESCRIPCION'].to_dict()
+                    df_filtered['Descripcion'] = df_filtered['ATA'].map(coords_map).fillna(
+                        "Punto tráfico " + df_filtered['ATA'].astype(str))
+                else:
+                    df_filtered['Descripcion'] = "Punto tráfico " + df_filtered['ATA'].astype(str)
+
+                # Arreglar Timestamps para exportación JSON
+                for col in df_filtered.columns:
+                    if pd.api.types.is_datetime64_any_dtype(df_filtered[col]):
+                        df_filtered[col] = df_filtered[col].dt.strftime('%Y-%m-%d')
+
+                print(f"📊 Tráfico: {len(df_filtered)} registros encontrados para {date_str}")
+                return df_filtered.to_dict('records')
+
         except Exception as e:
             print(f"❌ Error en _get_current_data_list: {e}")
                 
         return []
 
     def _update_charts(self):
-        """Genera y muestra gráficos de Matplotlib basados en los datos actuales."""
+        """Genera y muestra gráficos nativos interactivos de Flet."""
         if not self.data_ready_for_charts():
             self.charts_container.visible = False
             if self._page:
@@ -1869,105 +1899,199 @@ class RightPanel(ft.Container):
             return
 
         try:
+            print("  DEBUG: Iniciando _update_charts en hilo")
             data = self._get_current_data_list()
             if not data:
+                print("  DEBUG: No hay datos en _get_current_data_list")
                 self.charts_container.visible = False
                 return
 
-            # Configuración de estilo Matplotlib (Dark Mode compatible)
-            plt.style.use('dark_background')
-            plt.rcParams['figure.facecolor'] = '#161b22'
-            plt.rcParams['axes.facecolor'] = '#161b22'
+            print(f"📈 Renderizando gráfica nativa para: {self.current_layer} ({len(data)} registros)")
             
-            fig, ax = plt.subplots(figsize=(7, 4))
-
+            # Crear el gráfico según la capa actual
+            chart_control = None
             if self.current_layer == "pollution":
-                # Gráfica de barras comparativa (Top 8 estaciones)
-                data_subset = [d for d in data if isinstance(d, dict) and 'nombre' in d][:8]
-                if not data_subset: 
-                    self.charts_container.visible = False
-                    return
-                
-                stations = [str(d.get('nombre', 'Est.'))[:12] for d in data_subset]
-                no2_vals = [float(d.get('no2_avg', 0) or 0) for d in data_subset]
-                o3_vals = [float(d.get('o3_avg', 0) or 0) for d in data_subset]
-
-                x = np.arange(len(stations))
-                width = 0.35
-                ax.bar(x - width/2, no2_vals, width, label='NO2', color='#E53935')
-                ax.bar(x + width/2, o3_vals, width, label='O3', color='#FFB300')
-                ax.set_ylabel('Concentración (ug/m3)')
-                ax.set_title('Calidad del Aire por Estación', color='white')
-                ax.set_xticks(x)
-                ax.set_xticklabels(stations, rotation=45, ha='right', color='white')
-                ax.legend()
-
+                print("  DEBUG: Llamando a _create_pollution_chart")
+                chart_control = self._create_pollution_chart(data)
             elif self.current_layer == "rain":
-                # Gráfica de precipitaciones
-                data_subset = [d for d in data if isinstance(d, dict) and 'Estación' in d][:10]
-                if not data_subset:
-                    self.charts_container.visible = False
-                    return
-                    
-                names = [str(d.get('Estación', 'Est.'))[:12] for d in data_subset]
-                rain = [float(d.get('p_mes', 0)) if str(d.get('p_mes')) != 'N/A' and d.get('p_mes') is not None else 0 for d in data_subset]
-                ax.bar(names, rain, color='#1E88E5')
-                ax.set_ylabel('Precipitación (mm)')
-                ax.set_title('Precipitación Mensual por Estación', color='white')
-                plt.xticks(rotation=45, ha='right', color='white')
-
+                print("  DEBUG: Llamando a _create_rain_chart")
+                chart_control = self._create_rain_chart(data)
             elif self.current_layer == "traffic":
-                # Asegurar que IMD sea numérico y filtrar dicts
-                clean_data = []
-                for d in data:
-                    if isinstance(d, dict):
-                        d_copy = d.copy()
-                        val = d_copy.get('IMD')
-                        try:
-                            d_copy['IMD_num'] = float(val) if val is not None else 0
-                        except:
-                            d_copy['IMD_num'] = 0
-                        clean_data.append(d_copy)
-                
-                if not clean_data:
-                    self.charts_container.visible = False
-                    return
-                    
-                data_sorted = sorted(clean_data, key=lambda x: x.get('IMD_num', 0), reverse=True)[:10]
-                names = [str(d.get('Descripcion') or d.get('ATA'))[:20] for d in data_sorted]
-                imds = [d.get('IMD_num', 0) for d in data_sorted]
+                print("  DEBUG: Llamando a _create_traffic_chart")
+                chart_control = self._create_traffic_chart(data)
 
-                ax.barh(names, imds, color='#7C4DFF')
-                ax.set_xlabel('Vehículos / Día')
-                ax.set_title('Puntos de Mayor Tráfico', color='white')
-                ax.invert_yaxis()
-                plt.xticks(color='white')
-                plt.yticks(color='white')
-
-            plt.tight_layout()
-            
-            # Guardar en buffer
-            img_buf = io.BytesIO()
-            plt.savefig(img_buf, format='png', dpi=120, transparent=True)
-            img_buf.seek(0)
-            
-            # Convertir a Base64 para Flet
-            img_b64 = base64.b64encode(img_buf.read()).decode('utf-8')
-            plt.close(fig)
-            
-            # Actualizar componente Flet usando el esquema data URI para compatibilidad
-            self.chart_image.src = f"data:image/png;base64,{img_b64}"
-            self.chart_image.visible = True
-            self.charts_container.visible = True
+            print(f"  DEBUG: chart_control es {type(chart_control)}")
+            if chart_control:
+                print(f"  DEBUG: Forzando dimensiones del contenedor. Anterior: {self.chart_content.width}x{self.chart_content.height}")
+                self.chart_content.width = 450
+                self.chart_content.visible = True
+                self.chart_content.content = chart_control
+                self.charts_container.visible = True
+                print("  ✅ Gráfico actualizado y visible en charts_container")
+            else:
+                self.charts_container.visible = False
+                print("  ⚠️ El generador de gráficos devolvió None (sin datos suficientes)")
             
         except Exception as e:
-            print(f"❌ Error al generar gráfico en UI: {e}")
+            print(f"❌ Error al generar gráfico nativo: {e}")
             import traceback
             traceback.print_exc()
             self.charts_container.visible = False
         
         if self._page:
             self._page.update()
+
+    def _fig_to_flet_image(self, fig, tooltip_text="Análisis Dinámico"):
+        """Convierte una figura Matplotlib a ft.Image usando Base64 en memoria."""
+        try:
+            buf = io.BytesIO()
+            fig.savefig(buf, format='png', dpi=100, transparent=False, bbox_inches='tight')
+            plt.close(fig)
+            buf.seek(0)
+            b64_str = base64.b64encode(buf.read()).decode('utf-8')
+            buf.close()
+            return ft.Image(
+                src=f"data:image/png;base64,{b64_str}",
+                width=450,
+                height=280,
+                fit=ft.BoxFit.CONTAIN,
+                border_radius=ft.border_radius.all(10),
+            )
+        except Exception as e:
+            print(f"  ❌ Error al convertir figura a base64: {e}")
+            try:
+                plt.close(fig)
+            except Exception:
+                pass
+            return None
+
+
+    def _create_pollution_chart(self, data):
+        """Crea un gráfico de barras agrupadas para contaminación."""
+        print("  📈 _create_pollution_chart llamado")
+        data_subset = []
+        for d in data:
+            if isinstance(d, dict) and ('nombre' in d or 'Estacion' in d):
+                data_subset.append(d)
+        data_subset = data_subset[:6]
+        
+        if not data_subset: 
+            print("  ⚠️ No hay datos para el gráfico de polución")
+            return None
+
+        no2_vals = [float(d.get('NO2') or d.get('no2_avg') or 0) for d in data_subset]
+        o3_vals = [float(d.get('O3') or d.get('o3_avg') or 0) for d in data_subset]
+
+        print(f"  📊 Creando gráfico de polución para {len(data_subset)} estaciones")
+        fig, ax = plt.subplots(figsize=(5, 3), dpi=100)
+        fig.patch.set_facecolor('#1a2332') # panel_medium
+        ax.set_facecolor('#1a2332')
+
+        x = np.arange(len(data_subset))
+        width = 0.35
+
+        ax.bar(x - width/2, no2_vals, width, label='NO2', color='#00ff88', alpha=0.8)
+        ax.bar(x + width/2, o3_vals, width, label='O3', color='#ff00ff', alpha=0.8)
+        
+        ax.set_ylabel('µg/m³', color='white', size=8)
+        ax.set_xticks(x)
+        ax.tick_params(colors='white', labelsize=7) # Establecer colores de ticks en blanco
+        def clean_name(n):
+            for p in ["VALENCIA,", "VALÈNCIA,", "VALÉNCIA,", "VALENCIA", "VALÈNCIA", "VALÉNCIA"]:
+                n = n.replace(p, "")
+            import textwrap
+            n = n.strip(", ").strip()
+            return "\n".join(textwrap.wrap(n, width=12))
+
+        # Usar .get() para evitar KeyErrors y limpiar nombres con saltos de línea
+        names = [clean_name(str(d.get('Estación') or d.get('nombre') or d.get('Estacion') or 'S')) for d in data_subset]
+        
+        ax.set_xticklabels(names, rotation=0, size=7, color='white') # Color blanco para nombres estaciones
+        ax.legend(prop={'size': 7}, facecolor='#1a2332', edgecolor='none', labelcolor='white') # Leyenda en blanco
+        
+        return self._fig_to_flet_image(fig)
+
+    def _create_rain_chart(self, data):
+        """Crea un gráfico de precipitaciones con Matplotlib (Modo Dark)."""
+        # Filtrar solo estaciones con datos de lluvia y limitar para el gráfico
+        data_subset = [d for d in data if d.get('p_mes') or d.get('Precipitación')][:8]
+        if not data_subset: 
+            print("  ⚠️ No hay datos suficientes para el gráfico de lluvia")
+            return None
+
+        print(f"  📊 Creando gráfico de lluvia para {len(data_subset)} estaciones")
+        fig, ax = plt.subplots(figsize=(5, 3), dpi=100)
+        fig.patch.set_facecolor('#1a2332')
+        ax.set_facecolor('#1a2332')
+        
+        def clean_name(n):
+            for p in ["VALENCIA,", "VALÈNCIA,", "VALÉNCIA,", "VALENCIA", "VALÈNCIA", "VALÉNCIA"]:
+                n = n.replace(p, "")
+            import textwrap
+            n = n.strip(", ").strip()
+            return "\n".join(textwrap.wrap(n, width=12))
+
+        # Extracción y limpieza de nombres multilínea
+        names = [clean_name(str(d.get('Estación') or d.get('nombre') or d.get('Estacion') or 'S')) for d in data_subset]
+        
+        precip_vals = []
+        for d in data_subset:
+            p_val = d.get('Precipitación') or d.get('p_mes') or 0
+            try:
+                if isinstance(p_val, str):
+                    p_val = p_val.split("(")[0].strip()
+                precip_vals.append(float(p_val))
+            except:
+                precip_vals.append(0.0)
+
+        ax.bar(names, precip_vals, color='#4a9eff', alpha=0.8)
+        ax.set_ylabel('mm', color='white', size=9)
+        ax.tick_params(labelsize=7, colors='white') # Color blanco
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.grid(axis='y', alpha=0.1)
+
+        return self._fig_to_flet_image(fig)
+
+    def _create_traffic_chart(self, data):
+        """Crea un gráfico de tráfico con Matplotlib (Modo Dark)."""
+        clean_data = []
+        import textwrap
+        for d in data:
+            if isinstance(d, dict):
+                try:
+                    val = float(d.get('IMD') or 0)
+                    raw_name = str(d.get('Descripcion') or d.get('ATA'))
+                    clean_name = "\n".join(textwrap.wrap(raw_name, width=15))
+                    clean_data.append({'name': clean_name, 'val': val})
+                except: continue
+        
+        data_sorted = sorted(clean_data, key=lambda x: x['val'], reverse=True)[:6]
+        if not data_sorted: return None
+
+        names = [x['name'] for x in data_sorted]
+        # Crear tooltip informativo
+        full_names = ", ".join([str(d.get('Descripcion') or d.get('ATA')) for d in data[:6]])
+        tooltip = f"Puntos de tráfico: {full_names}"
+
+        vals = [x['val'] for x in data_sorted]
+
+        print(f"  📊 Creando gráfico de tráfico para {len(data_sorted)} puntos")
+        plt.style.use('dark_background')
+        fig, ax = plt.subplots(figsize=(5, 3), tight_layout=True)
+        fig.patch.set_facecolor('#1a2332')
+        ax.set_facecolor('#1a2332')
+
+        ax.barh(names, vals, color='#ffaa00', alpha=0.8)
+        ax.set_xlabel('veh/día', color='white', size=9)
+        ax.tick_params(labelsize=7, colors='white')
+        ax.invert_yaxis()
+        
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.grid(axis='x', alpha=0.1)
+
+        return self._fig_to_flet_image(fig)
 
     def data_ready_for_charts(self):
         """Verifica si hay datos suficientes para mostrar gráficos."""

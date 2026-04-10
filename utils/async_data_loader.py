@@ -193,12 +193,13 @@ class AsyncDataLoader:
             'weather_stations_info': {}
         }
 
-        # Bounding box para Valencia Ciudad
+        # Bounding box para el Area Metropolitana de Valencia (Horta)
+        # Esto asegura que los sensores sean de la zona local y coincidan con los datos de las gráficas
         VALENCIA_BBOX = {
-            "lat_min": 39.40,
-            "lat_max": 39.55,
-            "lon_min": -0.55,
-            "lon_max": -0.25
+            "lat_min": 39.30,
+            "lat_max": 39.75,
+            "lon_min": -0.60,
+            "lon_max": -0.20
         }
 
         try:
@@ -214,7 +215,7 @@ class AsyncDataLoader:
                     lat = self._dms_to_decimal(s['latitud'])
                     lon = self._dms_to_decimal(s['longitud'])
 
-                    # Filtrar solo estaciones dentro de Valencia Ciudad
+                    # Filtrar estaciones dentro del área metropolitana de Valencia
                     if lat and lon:
                         if (VALENCIA_BBOX["lat_min"] <= lat <= VALENCIA_BBOX["lat_max"] and
                                 VALENCIA_BBOX["lon_min"] <= lon <= VALENCIA_BBOX["lon_max"]):

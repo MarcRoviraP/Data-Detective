@@ -143,6 +143,18 @@ def procesar_imds():
         meses_unicos = df_final['FECHA'].unique()
         logger.info(f"Número de meses únicos procesados: {len(meses_unicos)}")
         
+        # Filtrar por ATAs que tienen coordenadas en el bbox (si el coords parquet existe)
+        coords_parquet = os.path.join(os.path.dirname(__file__), "data", "trafico_valencia_coords.parquet")
+        if os.path.exists(coords_parquet):
+            df_coords = pd.read_parquet(coords_parquet, engine='pyarrow')
+            atas_bbox = set(df_coords['ATA'].dropna().astype(str).tolist())
+            num_antes_bbox = len(df_final)
+            df_final['ATA'] = df_final['ATA'].astype(str)
+            df_final = df_final[df_final['ATA'].isin(atas_bbox)]
+            logger.info(f"📍 Filtro bbox: {len(df_final)} registros de {num_antes_bbox} (eliminados {num_antes_bbox - len(df_final)})")
+        else:
+            logger.warning("⚠️  trafico_valencia_coords.parquet no encontrado. Ejecuta test.py primero para generar el filtro bbox.")
+
         df_final.to_parquet(archivo_salida, index=False)
         logger.info(f"✅ Datos guardados en: {archivo_salida}")
     else:
