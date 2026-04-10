@@ -468,11 +468,6 @@ class RightPanel(ft.Container):
         
         self.charts_container = ft.Container(
             content=ft.Column([
-                ft.Row([
-                    ft.Icon(ft.icons.Icons.ANALYTICS_OUTLINED, color=COLORS["primary"], size=20),
-                    ft.Text("ANÁLISIS DINÁMICO", size=14, weight="bold"),
-                ], alignment="start"),
-                ft.Divider(height=1, color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
                 self.chart_content
             ], spacing=10),
             padding=ft.padding.all(15),
