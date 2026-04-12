@@ -1220,7 +1220,7 @@ class RightPanel(ft.Container):
             marker = self._create_marker(
                 lat, lon, color, "traffic",
                 marker_data, tooltip,
-                on_click=lambda e: self.on_historical_traffic_click(row, desc)
+                on_click=lambda e, r=row, d=desc: self.on_historical_traffic_click(r, d)
             )
             self.traffic_markers.append(marker)
 
